@@ -1,0 +1,6 @@
+# Dossiers de build
+/build/
+/bin/
+
+# Fichiers IDE
+.vscode/
