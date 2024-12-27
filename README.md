@@ -6,7 +6,11 @@ Pour lancer ce projet, il faut dans un premier temps se placer dans le dossier `
 ```
 cd build
 ```
-Il faut ensuite le compiler en faisant dans l'ordre:
+Si le dossier n'exite pas, le créer avec :
+```
+mkdir build
+```
+Il faut ensuite compiler le projet avec :
 ```
 cmake ..
 make
