@@ -18,6 +18,7 @@ const GLuint VERTEX_ATTR_COLOR = 2;
 
 bool move = false;
 FreeflyCamera camera;
+float cameraHeight = 0.f;
 
 struct Vertex3DColor
 {
@@ -36,18 +37,22 @@ static void key_callback(GLFWwindow * /*window*/, int key, int /*scancode*/, int
     if ((action == GLFW_PRESS || action == GLFW_REPEAT) && key == GLFW_KEY_W)
     {
         camera.moveFront(0.1);
+        // camera.setCameraPositionY(cameraHeight);
     }
     else if ((action == GLFW_PRESS || action == GLFW_REPEAT) && key == GLFW_KEY_S)
     {
         camera.moveFront(-0.1);
+        // camera.setCameraPositionY(cameraHeight);
     }
     else if ((action == GLFW_PRESS || action == GLFW_REPEAT) && key == GLFW_KEY_A)
     {
         camera.moveLeft(0.1);
+        // camera.setCameraPositionY(cameraHeight);
     }
     else if ((action == GLFW_PRESS || action == GLFW_REPEAT) && key == GLFW_KEY_D)
     {
         camera.moveLeft(-0.1);
+        // camera.setCameraPositionY(cameraHeight);
     }
 }
 
@@ -61,11 +66,6 @@ static void mouse_button_callback(GLFWwindow * /*window*/, int button, int actio
     {
         move = false;
     }
-}
-
-static void scroll_callback(GLFWwindow * /*window*/, double /*xoffset*/, double yoffset)
-{
-    camera.moveFront(yoffset);
 }
 
 static void cursor_position_callback(GLFWwindow * /*window*/, double xpos, double ypos)
@@ -136,7 +136,6 @@ int main(int /*argc*/, char **argv)
     /* Hook input callbacks */
     glfwSetKeyCallback(window, &key_callback);
     glfwSetMouseButtonCallback(window, &mouse_button_callback);
-    glfwSetScrollCallback(window, &scroll_callback);
     glfwSetCursorPosCallback(window, &cursor_position_callback);
     glfwSetWindowSizeCallback(window, &size_callback);
 
@@ -180,12 +179,12 @@ int main(int /*argc*/, char **argv)
      *********/
 
     Vertex3DColor floorVertices[] = {
-        Vertex3DColor(glm::vec3(-12.f, -22.f, 0.f), glm::vec3(0.4f, 0.25f, 0.2f)),
-        Vertex3DColor(glm::vec3(12.f, -22.f, 0.f), glm::vec3(0.4f, 0.25f, 0.2f)),
-        Vertex3DColor(glm::vec3(12.f, 22.f, 0.f), glm::vec3(0.4f, 0.25f, 0.2f)),
-        Vertex3DColor(glm::vec3(-12.f, 22.f, 0.f), glm::vec3(0.f, 0.25f, 0.2f)),
-        Vertex3DColor(glm::vec3(-12.f, -22.f, 0.f), glm::vec3(0.f, 0.25f, 0.2f)),
-        Vertex3DColor(glm::vec3(12.f, 22.f, 0.f), glm::vec3(0.f, 0.25f, 0.2f))};
+        Vertex3DColor(glm::vec3(-12.f, -21.f, 0.f), glm::vec3(0.4f, 0.25f, 0.2f)),
+        Vertex3DColor(glm::vec3(12.f, -21.f, 0.f), glm::vec3(0.4f, 0.25f, 0.2f)),
+        Vertex3DColor(glm::vec3(12.f, 21.f, 0.f), glm::vec3(0.4f, 0.25f, 0.2f)),
+        Vertex3DColor(glm::vec3(-12.f, 21.f, 0.f), glm::vec3(0.f, 0.25f, 0.2f)),
+        Vertex3DColor(glm::vec3(-12.f, -21.f, 0.f), glm::vec3(0.f, 0.25f, 0.2f)),
+        Vertex3DColor(glm::vec3(12.f, 21.f, 0.f), glm::vec3(0.f, 0.25f, 0.2f))};
 
     /* VBO & VAO */
     GLuint floorVBO, floorVAO;
@@ -339,7 +338,7 @@ int main(int /*argc*/, char **argv)
         squareProgram.use();
         glBindVertexArray(wallVAO);
 
-        MVMatrix = glm::translate(ViewMatrix, glm::vec3(0, 0, 5)); // Position in front
+        MVMatrix = glm::translate(ViewMatrix, glm::vec3(0, 0, 4)); // Position in front
         glUniformMatrix4fv(squareMVPMatrixLocation, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MVMatrix));
         glUniformMatrix4fv(squareMVMatrixLocation, 1, GL_FALSE, glm::value_ptr(MVMatrix));
         glUniformMatrix4fv(squareNormalMatrixLocation, 1, GL_FALSE, glm::value_ptr(NormalMatrix));
@@ -350,7 +349,7 @@ int main(int /*argc*/, char **argv)
         squareProgram.use();
         glBindVertexArray(wallVAO);
 
-        MVMatrix = glm::translate(ViewMatrix, glm::vec3(-12, 0, -7)); // Position in front
+        MVMatrix = glm::translate(ViewMatrix, glm::vec3(-12, 0, -8)); // Position in front
         MVMatrix = glm::rotate(MVMatrix, glm::radians(90.f), glm::vec3(0, 1, 0));
         glUniformMatrix4fv(squareMVPMatrixLocation, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MVMatrix));
         glUniformMatrix4fv(squareMVMatrixLocation, 1, GL_FALSE, glm::value_ptr(MVMatrix));
@@ -362,7 +361,7 @@ int main(int /*argc*/, char **argv)
         squareProgram.use();
         glBindVertexArray(wallVAO);
 
-        MVMatrix = glm::translate(ViewMatrix, glm::vec3(12, 0, -7)); // Position in front
+        MVMatrix = glm::translate(ViewMatrix, glm::vec3(12, 0, -8)); // Position in front
         MVMatrix = glm::rotate(MVMatrix, glm::radians(90.f), glm::vec3(0, 1, 0));
         glUniformMatrix4fv(squareMVPMatrixLocation, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MVMatrix));
         glUniformMatrix4fv(squareMVMatrixLocation, 1, GL_FALSE, glm::value_ptr(MVMatrix));
@@ -374,7 +373,7 @@ int main(int /*argc*/, char **argv)
         squareProgram.use();
         glBindVertexArray(smallWallVAO);
 
-        MVMatrix = glm::translate(ViewMatrix, glm::vec3(-7, 0, -15));
+        MVMatrix = glm::translate(ViewMatrix, glm::vec3(-7, 0, -16));
         glUniformMatrix4fv(squareMVPMatrixLocation, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MVMatrix));
         glUniformMatrix4fv(squareMVMatrixLocation, 1, GL_FALSE, glm::value_ptr(MVMatrix));
         glUniformMatrix4fv(squareNormalMatrixLocation, 1, GL_FALSE, glm::value_ptr(NormalMatrix));
@@ -385,7 +384,7 @@ int main(int /*argc*/, char **argv)
         squareProgram.use();
         glBindVertexArray(smallWallVAO);
 
-        MVMatrix = glm::translate(ViewMatrix, glm::vec3(7, 0, -15));
+        MVMatrix = glm::translate(ViewMatrix, glm::vec3(7, 0, -16));
         glUniformMatrix4fv(squareMVPMatrixLocation, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MVMatrix));
         glUniformMatrix4fv(squareMVMatrixLocation, 1, GL_FALSE, glm::value_ptr(MVMatrix));
         glUniformMatrix4fv(squareNormalMatrixLocation, 1, GL_FALSE, glm::value_ptr(NormalMatrix));
@@ -396,7 +395,7 @@ int main(int /*argc*/, char **argv)
         squareProgram.use();
         glBindVertexArray(passageWallVAO);
 
-        MVMatrix = glm::translate(ViewMatrix, glm::vec3(-2, 0, -16));
+        MVMatrix = glm::translate(ViewMatrix, glm::vec3(-2, 0, -17));
         MVMatrix = glm::rotate(MVMatrix, glm::radians(90.f), glm::vec3(0, 1, 0));
         glUniformMatrix4fv(squareMVPMatrixLocation, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MVMatrix));
         glUniformMatrix4fv(squareMVMatrixLocation, 1, GL_FALSE, glm::value_ptr(MVMatrix));
@@ -407,7 +406,7 @@ int main(int /*argc*/, char **argv)
         squareProgram.use();
         glBindVertexArray(passageWallVAO);
 
-        MVMatrix = glm::translate(ViewMatrix, glm::vec3(2, 0, -16));
+        MVMatrix = glm::translate(ViewMatrix, glm::vec3(2, 0, -17));
         MVMatrix = glm::rotate(MVMatrix, glm::radians(90.f), glm::vec3(0, 1, 0));
         glUniformMatrix4fv(squareMVPMatrixLocation, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MVMatrix));
         glUniformMatrix4fv(squareMVMatrixLocation, 1, GL_FALSE, glm::value_ptr(MVMatrix));
@@ -419,7 +418,7 @@ int main(int /*argc*/, char **argv)
         squareProgram.use();
         glBindVertexArray(wallVAO);
 
-        MVMatrix = glm::translate(ViewMatrix, glm::vec3(0, 0, -39)); // Position in front
+        MVMatrix = glm::translate(ViewMatrix, glm::vec3(0, 0, -38)); // Position in front
         glUniformMatrix4fv(squareMVPMatrixLocation, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MVMatrix));
         glUniformMatrix4fv(squareMVMatrixLocation, 1, GL_FALSE, glm::value_ptr(MVMatrix));
         glUniformMatrix4fv(squareNormalMatrixLocation, 1, GL_FALSE, glm::value_ptr(NormalMatrix));
@@ -430,7 +429,7 @@ int main(int /*argc*/, char **argv)
         squareProgram.use();
         glBindVertexArray(wallVAO);
 
-        MVMatrix = glm::translate(ViewMatrix, glm::vec3(-12, 0, -27)); // Position in front
+        MVMatrix = glm::translate(ViewMatrix, glm::vec3(-12, 0, -26)); // Position in front
         MVMatrix = glm::rotate(MVMatrix, glm::radians(90.f), glm::vec3(0, 1, 0));
         glUniformMatrix4fv(squareMVPMatrixLocation, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MVMatrix));
         glUniformMatrix4fv(squareMVMatrixLocation, 1, GL_FALSE, glm::value_ptr(MVMatrix));
@@ -442,7 +441,7 @@ int main(int /*argc*/, char **argv)
         squareProgram.use();
         glBindVertexArray(wallVAO);
 
-        MVMatrix = glm::translate(ViewMatrix, glm::vec3(12, 0, -27)); // Position in front
+        MVMatrix = glm::translate(ViewMatrix, glm::vec3(12, 0, -26)); // Position in front
         MVMatrix = glm::rotate(MVMatrix, glm::radians(90.f), glm::vec3(0, 1, 0));
         glUniformMatrix4fv(squareMVPMatrixLocation, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MVMatrix));
         glUniformMatrix4fv(squareMVMatrixLocation, 1, GL_FALSE, glm::value_ptr(MVMatrix));
@@ -454,7 +453,7 @@ int main(int /*argc*/, char **argv)
         squareProgram.use();
         glBindVertexArray(smallWallVAO);
 
-        MVMatrix = glm::translate(ViewMatrix, glm::vec3(-7, 0, -17));
+        MVMatrix = glm::translate(ViewMatrix, glm::vec3(-7, 0, -18));
         glUniformMatrix4fv(squareMVPMatrixLocation, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MVMatrix));
         glUniformMatrix4fv(squareMVMatrixLocation, 1, GL_FALSE, glm::value_ptr(MVMatrix));
         glUniformMatrix4fv(squareNormalMatrixLocation, 1, GL_FALSE, glm::value_ptr(NormalMatrix));
@@ -465,7 +464,7 @@ int main(int /*argc*/, char **argv)
         squareProgram.use();
         glBindVertexArray(smallWallVAO);
 
-        MVMatrix = glm::translate(ViewMatrix, glm::vec3(7, 0, -17));
+        MVMatrix = glm::translate(ViewMatrix, glm::vec3(7, 0, -18));
         glUniformMatrix4fv(squareMVPMatrixLocation, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MVMatrix));
         glUniformMatrix4fv(squareMVMatrixLocation, 1, GL_FALSE, glm::value_ptr(MVMatrix));
         glUniformMatrix4fv(squareNormalMatrixLocation, 1, GL_FALSE, glm::value_ptr(NormalMatrix));
