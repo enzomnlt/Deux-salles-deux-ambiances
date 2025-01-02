@@ -36,24 +36,21 @@ static void key_callback(GLFWwindow * /*window*/, int key, int /*scancode*/, int
 
     if ((action == GLFW_PRESS || action == GLFW_REPEAT) && key == GLFW_KEY_W)
     {
-        camera.moveFront(0.1);
-        // camera.setCameraPositionY(cameraHeight);
+        camera.moveFront(0.2);
     }
     else if ((action == GLFW_PRESS || action == GLFW_REPEAT) && key == GLFW_KEY_S)
     {
-        camera.moveFront(-0.1);
-        // camera.setCameraPositionY(cameraHeight);
+        camera.moveFront(-0.2);
     }
     else if ((action == GLFW_PRESS || action == GLFW_REPEAT) && key == GLFW_KEY_A)
     {
-        camera.moveLeft(0.1);
-        // camera.setCameraPositionY(cameraHeight);
+        camera.moveLeft(0.2);
     }
     else if ((action == GLFW_PRESS || action == GLFW_REPEAT) && key == GLFW_KEY_D)
     {
-        camera.moveLeft(-0.1);
-        // camera.setCameraPositionY(cameraHeight);
+        camera.moveLeft(-0.2);
     }
+    camera.setCameraPositionY(cameraHeight);
 }
 
 static void mouse_button_callback(GLFWwindow * /*window*/, int button, int action, int /*mods*/)
@@ -481,6 +478,15 @@ int main(int /*argc*/, char **argv)
 
     glDeleteBuffers(1, &floorVBO);
     glDeleteVertexArrays(1, &floorVAO);
+
+    glDeleteBuffers(1, &wallVBO);
+    glDeleteVertexArrays(1, &wallVAO);
+
+    glDeleteBuffers(1, &smallWallVBO);
+    glDeleteVertexArrays(1, &smallWallVAO);
+
+    glDeleteBuffers(1, &passageWallVBO);
+    glDeleteVertexArrays(1, &passageWallVAO);
 
     glfwTerminate();
 

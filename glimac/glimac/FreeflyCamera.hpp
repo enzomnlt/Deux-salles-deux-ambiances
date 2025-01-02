@@ -17,12 +17,20 @@ namespace glimac
 
         void moveLeft(float t)
         {
-            m_Position += t * m_LeftVector;
+            glm::vec3 newPosition = m_Position + t * m_LeftVector;
+            if (isInBounds(newPosition))
+            {
+                m_Position = newPosition;
+            }
         }
 
         void moveFront(float t)
         {
-            m_Position += t * m_FrontVector;
+            glm::vec3 newPosition = m_Position + t * m_FrontVector;
+            if (isInBounds(newPosition))
+            {
+                m_Position = newPosition;
+            }
         }
 
         void rotateLeft(float degrees)
@@ -69,6 +77,18 @@ namespace glimac
 
             m_UpVector = glm::cross(m_FrontVector, m_LeftVector);
         }
-    };
 
+        bool isInBounds(const glm::vec3 &position)
+        {
+            if (position.x < -11.8f || position.x > 11.8f || position.z < -37.8f || position.z > 3.8f)
+            {
+                return false;
+            }
+            if (position.z < -15.8f && position.z > -18.1 && (position.x < -1.8f || position.x > 1.8f))
+            {
+                return false;
+            }
+            return true;
+        }
+    };
 }

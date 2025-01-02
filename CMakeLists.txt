@@ -35,6 +35,10 @@ else()
     target_compile_options(DSDA PRIVATE -Wall -Wextra -Wpedantic -pedantic-errors)
 endif()
 
+# Ajouter les options de débogage
+set(CMAKE_BUILD_TYPE Debug)
+target_compile_options(DSDA PRIVATE -g)
+
 # Propriétés des fichiers générés
 set_target_properties(DSDA PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${BINARY_DIR}
