@@ -7,8 +7,8 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 # Répertoires
 set(SOURCE_DIR ${CMAKE_SOURCE_DIR}/src)
+set(SHADER_DIR ${CMAKE_SOURCE_DIR}/src/shaders)
 set(INCLUDE_DIR ${CMAKE_SOURCE_DIR}/include)
-set(SHADER_DIR ${CMAKE_SOURCE_DIR}/shaders)
 set(ASSETS_DIR ${CMAKE_SOURCE_DIR}/assets)
 set(BINARY_DIR ${CMAKE_SOURCE_DIR}/bin)
 
@@ -42,4 +42,4 @@ set_target_properties(DSDA PROPERTIES
 
 # Copier assets et shaders dans build
 file(COPY ${ASSETS_DIR} DESTINATION ${BINARY_DIR})
-file(COPY ${SHADER_DIR} DESTINATION ${BINARY_DIR}/shaders)
+file(COPY ${SHADER_DIR} DESTINATION ${BINARY_DIR})
