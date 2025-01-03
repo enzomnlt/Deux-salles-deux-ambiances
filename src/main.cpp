@@ -94,6 +94,37 @@ static void size_callback(GLFWwindow * /*window*/, int width, int height)
     window_height = height;
 }
 
+void createWallVBOandVAO(GLuint &vbo, GLuint &vao, const Vertex3DColor vertices[], GLsizeiptr size)
+{
+    glGenVertexArrays(1, &vao);
+    glGenBuffers(1, &vbo);
+
+    glBindVertexArray(vao);
+
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBufferData(GL_ARRAY_BUFFER, size, vertices, GL_STATIC_DRAW);
+
+    glEnableVertexAttribArray(VERTEX_ATTR_POSITION);
+    glVertexAttribPointer(VERTEX_ATTR_POSITION, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex3DColor), (const GLvoid *)offsetof(Vertex3DColor, position));
+
+    glEnableVertexAttribArray(VERTEX_ATTR_COLOR);
+    glVertexAttribPointer(VERTEX_ATTR_COLOR, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex3DColor), (const GLvoid *)offsetof(Vertex3DColor, color));
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+}
+
+void drawWall(GLuint vao, const glm::mat4 &MVMatrix, const glm::mat4 &ProjMatrix, GLint MVPMatrixLocation, GLint MVMatrixLocation, GLint NormalMatrixLocation)
+{
+    glm::mat4 NormalMatrix = glm::transpose(glm::inverse(MVMatrix));
+    glUniformMatrix4fv(MVPMatrixLocation, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MVMatrix));
+    glUniformMatrix4fv(MVMatrixLocation, 1, GL_FALSE, glm::value_ptr(MVMatrix));
+    glUniformMatrix4fv(NormalMatrixLocation, 1, GL_FALSE, glm::value_ptr(NormalMatrix));
+    glBindVertexArray(vao);
+    glDrawArrays(GL_TRIANGLES, 0, 6);
+    glBindVertexArray(0);
+}
+
 int main(int /*argc*/, char **argv)
 {
     /* Initialize the library */
@@ -185,7 +216,7 @@ int main(int /*argc*/, char **argv)
 
     Vertex3DColor floorVertices[] = {
         Vertex3DColor(glm::vec3(-12.f, -21.f, 0.f), glm::vec3(0.4f, 0.25f, 0.2f)),
-        Vertex3DColor(glm::vec3(12.f, -21.f, 0.f), glm::vec3(0.4, 0.25f, 0.2f)),
+        Vertex3DColor(glm::vec3(12.f, -21.f, 0.f), glm::vec3(0.4f, 0.25f, 0.2f)),
         Vertex3DColor(glm::vec3(12.f, 21.f, 0.f), glm::vec3(0.4f, 0.25f, 0.2f)),
         Vertex3DColor(glm::vec3(-12.f, 21.f, 0.f), glm::vec3(0.4f, 0.25f, 0.2f)),
         Vertex3DColor(glm::vec3(-12.f, -21.f, 0.f), glm::vec3(0.4f, 0.25f, 0.2f)),
@@ -193,22 +224,7 @@ int main(int /*argc*/, char **argv)
 
     /* VBO & VAO */
     GLuint floorVBO, floorVAO;
-    glGenVertexArrays(1, &floorVAO);
-    glGenBuffers(1, &floorVBO);
-
-    glBindVertexArray(floorVAO);
-
-    glBindBuffer(GL_ARRAY_BUFFER, floorVBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(floorVertices), floorVertices, GL_STATIC_DRAW);
-
-    glEnableVertexAttribArray(VERTEX_ATTR_POSITION);
-    glVertexAttribPointer(VERTEX_ATTR_POSITION, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex3DColor), (const GLvoid *)offsetof(Vertex3DColor, position));
-
-    glEnableVertexAttribArray(VERTEX_ATTR_COLOR);
-    glVertexAttribPointer(VERTEX_ATTR_COLOR, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex3DColor), (const GLvoid *)offsetof(Vertex3DColor, color));
-
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindVertexArray(0);
+    createWallVBOandVAO(floorVBO, floorVAO, floorVertices, sizeof(floorVertices));
 
     /********
      * WALLS
@@ -224,83 +240,38 @@ int main(int /*argc*/, char **argv)
 
     /* VBO & VAO */
     GLuint wallVBO, wallVAO;
-    glGenVertexArrays(1, &wallVAO);
-    glGenBuffers(1, &wallVBO);
-
-    glBindVertexArray(wallVAO);
-
-    glBindBuffer(GL_ARRAY_BUFFER, wallVBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(wallVertices), wallVertices, GL_STATIC_DRAW);
-
-    glEnableVertexAttribArray(VERTEX_ATTR_POSITION);
-    glVertexAttribPointer(VERTEX_ATTR_POSITION, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (const GLvoid *)offsetof(Vertex3DColor, position));
-
-    glEnableVertexAttribArray(VERTEX_ATTR_COLOR);
-    glVertexAttribPointer(VERTEX_ATTR_COLOR, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (const GLvoid *)offsetof(Vertex3DColor, color));
-
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindVertexArray(0);
+    createWallVBOandVAO(wallVBO, wallVAO, wallVertices, sizeof(wallVertices));
 
     /**************
      * SMALL WALLS
      **************/
     Vertex3DColor smallWallVertices[] = {
-        Vertex3DColor(glm::vec3(-5.f, -3.f, 0.f), glm::vec3(1.f, 0.25f, 0.2f)),
-        Vertex3DColor(glm::vec3(5.f, -3.f, 0.f), glm::vec3(1.f, 0.25f, 0.2f)),
-        Vertex3DColor(glm::vec3(5.f, 3.f, 0.f), glm::vec3(1.f, 0.25f, 0.2f)),
-        Vertex3DColor(glm::vec3(-5.f, 3.f, 0.f), glm::vec3(0.7f, 0.6f, 0.2f)),
-        Vertex3DColor(glm::vec3(-5.f, -3.f, 0.f), glm::vec3(0.7f, 0.6f, 0.2f)),
-        Vertex3DColor(glm::vec3(5.f, 3.f, 0.f), glm::vec3(0.7f, 0.6f, 0.2f))};
+        Vertex3DColor(glm::vec3(-5.f, -3.f, 0.f), glm::vec3(0.5f, 0.6f, 0.7f)),
+        Vertex3DColor(glm::vec3(5.f, -3.f, 0.f), glm::vec3(0.5f, 0.6f, 0.7f)),
+        Vertex3DColor(glm::vec3(5.f, 3.f, 0.f), glm::vec3(0.5f, 0.6f, 0.7f)),
+        Vertex3DColor(glm::vec3(-5.f, 3.f, 0.f), glm::vec3(0.5f, 0.6f, 0.7f)),
+        Vertex3DColor(glm::vec3(-5.f, -3.f, 0.f), glm::vec3(0.5f, 0.6f, 0.7f)),
+        Vertex3DColor(glm::vec3(5.f, 3.f, 0.f), glm::vec3(0.5f, 0.6f, 0.7f))};
 
     /* VBO & VAO */
     GLuint smallWallVBO, smallWallVAO;
-    glGenVertexArrays(1, &smallWallVAO);
-    glGenBuffers(1, &smallWallVBO);
-
-    glBindVertexArray(smallWallVAO);
-
-    glBindBuffer(GL_ARRAY_BUFFER, smallWallVBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(smallWallVertices), smallWallVertices, GL_STATIC_DRAW);
-
-    glEnableVertexAttribArray(VERTEX_ATTR_POSITION);
-    glVertexAttribPointer(VERTEX_ATTR_POSITION, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (const GLvoid *)offsetof(Vertex3DColor, position));
-
-    glEnableVertexAttribArray(VERTEX_ATTR_COLOR);
-    glVertexAttribPointer(VERTEX_ATTR_COLOR, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (const GLvoid *)offsetof(Vertex3DColor, color));
-
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindVertexArray(0);
+    createWallVBOandVAO(smallWallVBO, smallWallVAO, smallWallVertices, sizeof(smallWallVertices));
 
     /****************
      * PASSAGE WALLS
      ****************/
 
     Vertex3DColor passageWallVertices[] = {
-        Vertex3DColor(glm::vec3(-1.f, -3.f, 0.f), glm::vec3(1.f, 0.25f, 0.2f)),
-        Vertex3DColor(glm::vec3(1.f, -3.f, 0.f), glm::vec3(1.f, 0.25f, 0.2f)),
-        Vertex3DColor(glm::vec3(1.f, 3.f, 0.f), glm::vec3(1.f, 0.25f, 0.2f)),
-        Vertex3DColor(glm::vec3(-1.f, 3.f, 0.f), glm::vec3(0.7f, 0.6f, 0.2f)),
-        Vertex3DColor(glm::vec3(-1.f, -3.f, 0.f), glm::vec3(0.7f, 0.6f, 0.2f)),
-        Vertex3DColor(glm::vec3(1.f, 3.f, 0.f), glm::vec3(0.7f, 0.6f, 0.2f))};
+        Vertex3DColor(glm::vec3(-1.f, -3.f, 0.f), glm::vec3(0.5f, 0.6f, 0.7f)),
+        Vertex3DColor(glm::vec3(1.f, -3.f, 0.f), glm::vec3(0.5f, 0.6f, 0.7f)),
+        Vertex3DColor(glm::vec3(1.f, 3.f, 0.f), glm::vec3(0.5f, 0.6f, 0.7f)),
+        Vertex3DColor(glm::vec3(-1.f, 3.f, 0.f), glm::vec3(0.5f, 0.6f, 0.7f)),
+        Vertex3DColor(glm::vec3(-1.f, -3.f, 0.f), glm::vec3(0.5f, 0.6f, 0.7f)),
+        Vertex3DColor(glm::vec3(1.f, 3.f, 0.f), glm::vec3(0.5f, 0.6f, 0.7f))};
 
     /* VBO & VAO */
     GLuint passageWallVBO, passageWallVAO;
-    glGenVertexArrays(1, &passageWallVAO);
-    glGenBuffers(1, &passageWallVBO);
-
-    glBindVertexArray(passageWallVAO);
-
-    glBindBuffer(GL_ARRAY_BUFFER, passageWallVBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(passageWallVertices), passageWallVertices, GL_STATIC_DRAW);
-
-    glEnableVertexAttribArray(VERTEX_ATTR_POSITION);
-    glVertexAttribPointer(VERTEX_ATTR_POSITION, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (const GLvoid *)offsetof(Vertex3DColor, position));
-
-    glEnableVertexAttribArray(VERTEX_ATTR_COLOR);
-    glVertexAttribPointer(VERTEX_ATTR_COLOR, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (const GLvoid *)offsetof(Vertex3DColor, color));
-
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindVertexArray(0);
+    createWallVBOandVAO(passageWallVBO, passageWallVAO, passageWallVertices, sizeof(passageWallVertices));
 
     while (!glfwWindowShouldClose(window))
     {
@@ -327,154 +298,70 @@ int main(int /*argc*/, char **argv)
         glDrawArrays(GL_TRIANGLES, 0, sphere.getVertexCount());
         glBindVertexArray(0);
 
-        // Floor
-        squareProgram.use();
-        glBindVertexArray(floorVAO);
+        /*****************
+         * SCENE GEOMETRY
+         *****************/
 
+        squareProgram.use();
+
+        // Floor
         MVMatrix = glm::translate(ViewMatrix, glm::vec3(0, -3, -17));
         MVMatrix = glm::rotate(MVMatrix, glm::radians(90.f), glm::vec3(1, 0, 0));
-        glUniformMatrix4fv(squareMVPMatrixLocation, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MVMatrix));
-        glUniformMatrix4fv(squareMVMatrixLocation, 1, GL_FALSE, glm::value_ptr(MVMatrix));
-        glUniformMatrix4fv(squareNormalMatrixLocation, 1, GL_FALSE, glm::value_ptr(NormalMatrix));
-        glDrawArrays(GL_TRIANGLES, 0, 6);
-        glBindVertexArray(0);
+        drawWall(floorVAO, MVMatrix, ProjMatrix, squareMVPMatrixLocation, squareMVMatrixLocation, squareNormalMatrixLocation);
 
         // Room 1 Back wall
-        squareProgram.use();
-        glBindVertexArray(wallVAO);
-
         MVMatrix = glm::translate(ViewMatrix, glm::vec3(0, 0, 4)); // Position in front
-        glUniformMatrix4fv(squareMVPMatrixLocation, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MVMatrix));
-        glUniformMatrix4fv(squareMVMatrixLocation, 1, GL_FALSE, glm::value_ptr(MVMatrix));
-        glUniformMatrix4fv(squareNormalMatrixLocation, 1, GL_FALSE, glm::value_ptr(NormalMatrix));
-        glDrawArrays(GL_TRIANGLES, 0, 6);
-        glBindVertexArray(0);
+        drawWall(wallVAO, MVMatrix, ProjMatrix, squareMVPMatrixLocation, squareMVMatrixLocation, squareNormalMatrixLocation);
 
         // Room 1 Left wall
-        squareProgram.use();
-        glBindVertexArray(wallVAO);
-
         MVMatrix = glm::translate(ViewMatrix, glm::vec3(-12, 0, -8)); // Position in front
         MVMatrix = glm::rotate(MVMatrix, glm::radians(90.f), glm::vec3(0, 1, 0));
-        glUniformMatrix4fv(squareMVPMatrixLocation, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MVMatrix));
-        glUniformMatrix4fv(squareMVMatrixLocation, 1, GL_FALSE, glm::value_ptr(MVMatrix));
-        glUniformMatrix4fv(squareNormalMatrixLocation, 1, GL_FALSE, glm::value_ptr(NormalMatrix));
-        glDrawArrays(GL_TRIANGLES, 0, 6);
-        glBindVertexArray(0);
+        drawWall(wallVAO, MVMatrix, ProjMatrix, squareMVPMatrixLocation, squareMVMatrixLocation, squareNormalMatrixLocation);
 
         // Room 1 Right wall
-        squareProgram.use();
-        glBindVertexArray(wallVAO);
-
         MVMatrix = glm::translate(ViewMatrix, glm::vec3(12, 0, -8)); // Position in front
         MVMatrix = glm::rotate(MVMatrix, glm::radians(90.f), glm::vec3(0, 1, 0));
-        glUniformMatrix4fv(squareMVPMatrixLocation, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MVMatrix));
-        glUniformMatrix4fv(squareMVMatrixLocation, 1, GL_FALSE, glm::value_ptr(MVMatrix));
-        glUniformMatrix4fv(squareNormalMatrixLocation, 1, GL_FALSE, glm::value_ptr(NormalMatrix));
-        glDrawArrays(GL_TRIANGLES, 0, 6);
-        glBindVertexArray(0);
+        drawWall(wallVAO, MVMatrix, ProjMatrix, squareMVPMatrixLocation, squareMVMatrixLocation, squareNormalMatrixLocation);
 
         // Room 1 Small left wall
-        squareProgram.use();
         glBindVertexArray(smallWallVAO);
-
         MVMatrix = glm::translate(ViewMatrix, glm::vec3(-7, 0, -16));
-        glUniformMatrix4fv(squareMVPMatrixLocation, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MVMatrix));
-        glUniformMatrix4fv(squareMVMatrixLocation, 1, GL_FALSE, glm::value_ptr(MVMatrix));
-        glUniformMatrix4fv(squareNormalMatrixLocation, 1, GL_FALSE, glm::value_ptr(NormalMatrix));
-        glDrawArrays(GL_TRIANGLES, 0, 6);
-        glBindVertexArray(0);
+        drawWall(smallWallVAO, MVMatrix, ProjMatrix, squareMVPMatrixLocation, squareMVMatrixLocation, squareNormalMatrixLocation);
 
         // Room 1 Small right wall
-        squareProgram.use();
-        glBindVertexArray(smallWallVAO);
-
         MVMatrix = glm::translate(ViewMatrix, glm::vec3(7, 0, -16));
-        glUniformMatrix4fv(squareMVPMatrixLocation, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MVMatrix));
-        glUniformMatrix4fv(squareMVMatrixLocation, 1, GL_FALSE, glm::value_ptr(MVMatrix));
-        glUniformMatrix4fv(squareNormalMatrixLocation, 1, GL_FALSE, glm::value_ptr(NormalMatrix));
-        glDrawArrays(GL_TRIANGLES, 0, 6);
-        glBindVertexArray(0);
+        drawWall(smallWallVAO, MVMatrix, ProjMatrix, squareMVPMatrixLocation, squareMVMatrixLocation, squareNormalMatrixLocation);
 
         // Passage walls
-        squareProgram.use();
-        glBindVertexArray(passageWallVAO);
-
         MVMatrix = glm::translate(ViewMatrix, glm::vec3(-2, 0, -17));
         MVMatrix = glm::rotate(MVMatrix, glm::radians(90.f), glm::vec3(0, 1, 0));
-        glUniformMatrix4fv(squareMVPMatrixLocation, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MVMatrix));
-        glUniformMatrix4fv(squareMVMatrixLocation, 1, GL_FALSE, glm::value_ptr(MVMatrix));
-        glUniformMatrix4fv(squareNormalMatrixLocation, 1, GL_FALSE, glm::value_ptr(NormalMatrix));
-        glDrawArrays(GL_TRIANGLES, 0, 6);
-        glBindVertexArray(0);
-
-        squareProgram.use();
-        glBindVertexArray(passageWallVAO);
+        drawWall(passageWallVAO, MVMatrix, ProjMatrix, squareMVPMatrixLocation, squareMVMatrixLocation, squareNormalMatrixLocation);
 
         MVMatrix = glm::translate(ViewMatrix, glm::vec3(2, 0, -17));
         MVMatrix = glm::rotate(MVMatrix, glm::radians(90.f), glm::vec3(0, 1, 0));
-        glUniformMatrix4fv(squareMVPMatrixLocation, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MVMatrix));
-        glUniformMatrix4fv(squareMVMatrixLocation, 1, GL_FALSE, glm::value_ptr(MVMatrix));
-        glUniformMatrix4fv(squareNormalMatrixLocation, 1, GL_FALSE, glm::value_ptr(NormalMatrix));
-        glDrawArrays(GL_TRIANGLES, 0, 6);
-        glBindVertexArray(0);
+        drawWall(passageWallVAO, MVMatrix, ProjMatrix, squareMVPMatrixLocation, squareMVMatrixLocation, squareNormalMatrixLocation);
 
         // Room 2 back wall
-        squareProgram.use();
-        glBindVertexArray(wallVAO);
-
         MVMatrix = glm::translate(ViewMatrix, glm::vec3(0, 0, -38)); // Position in front
-        glUniformMatrix4fv(squareMVPMatrixLocation, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MVMatrix));
-        glUniformMatrix4fv(squareMVMatrixLocation, 1, GL_FALSE, glm::value_ptr(MVMatrix));
-        glUniformMatrix4fv(squareNormalMatrixLocation, 1, GL_FALSE, glm::value_ptr(NormalMatrix));
-        glDrawArrays(GL_TRIANGLES, 0, 6);
-        glBindVertexArray(0);
+        drawWall(wallVAO, MVMatrix, ProjMatrix, squareMVPMatrixLocation, squareMVMatrixLocation, squareNormalMatrixLocation);
 
         // Room 2 Left wall
-        squareProgram.use();
-        glBindVertexArray(wallVAO);
-
         MVMatrix = glm::translate(ViewMatrix, glm::vec3(-12, 0, -26)); // Position in front
         MVMatrix = glm::rotate(MVMatrix, glm::radians(90.f), glm::vec3(0, 1, 0));
-        glUniformMatrix4fv(squareMVPMatrixLocation, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MVMatrix));
-        glUniformMatrix4fv(squareMVMatrixLocation, 1, GL_FALSE, glm::value_ptr(MVMatrix));
-        glUniformMatrix4fv(squareNormalMatrixLocation, 1, GL_FALSE, glm::value_ptr(NormalMatrix));
-        glDrawArrays(GL_TRIANGLES, 0, 6);
-        glBindVertexArray(0);
+        drawWall(wallVAO, MVMatrix, ProjMatrix, squareMVPMatrixLocation, squareMVMatrixLocation, squareNormalMatrixLocation);
 
         // Room 2 Right wall
-        squareProgram.use();
-        glBindVertexArray(wallVAO);
-
         MVMatrix = glm::translate(ViewMatrix, glm::vec3(12, 0, -26)); // Position in front
         MVMatrix = glm::rotate(MVMatrix, glm::radians(90.f), glm::vec3(0, 1, 0));
-        glUniformMatrix4fv(squareMVPMatrixLocation, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MVMatrix));
-        glUniformMatrix4fv(squareMVMatrixLocation, 1, GL_FALSE, glm::value_ptr(MVMatrix));
-        glUniformMatrix4fv(squareNormalMatrixLocation, 1, GL_FALSE, glm::value_ptr(NormalMatrix));
-        glDrawArrays(GL_TRIANGLES, 0, 6);
-        glBindVertexArray(0);
+        drawWall(wallVAO, MVMatrix, ProjMatrix, squareMVPMatrixLocation, squareMVMatrixLocation, squareNormalMatrixLocation);
 
         // Room 2 Small left wall
-        squareProgram.use();
-        glBindVertexArray(smallWallVAO);
-
         MVMatrix = glm::translate(ViewMatrix, glm::vec3(-7, 0, -18));
-        glUniformMatrix4fv(squareMVPMatrixLocation, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MVMatrix));
-        glUniformMatrix4fv(squareMVMatrixLocation, 1, GL_FALSE, glm::value_ptr(MVMatrix));
-        glUniformMatrix4fv(squareNormalMatrixLocation, 1, GL_FALSE, glm::value_ptr(NormalMatrix));
-        glDrawArrays(GL_TRIANGLES, 0, 6);
-        glBindVertexArray(0);
+        drawWall(smallWallVAO, MVMatrix, ProjMatrix, squareMVPMatrixLocation, squareMVMatrixLocation, squareNormalMatrixLocation);
 
         // Room 2 Small right wall
-        squareProgram.use();
-        glBindVertexArray(smallWallVAO);
-
         MVMatrix = glm::translate(ViewMatrix, glm::vec3(7, 0, -18));
-        glUniformMatrix4fv(squareMVPMatrixLocation, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MVMatrix));
-        glUniformMatrix4fv(squareMVMatrixLocation, 1, GL_FALSE, glm::value_ptr(MVMatrix));
-        glUniformMatrix4fv(squareNormalMatrixLocation, 1, GL_FALSE, glm::value_ptr(NormalMatrix));
-        glDrawArrays(GL_TRIANGLES, 0, 6);
-        glBindVertexArray(0);
+        drawWall(smallWallVAO, MVMatrix, ProjMatrix, squareMVPMatrixLocation, squareMVMatrixLocation, squareNormalMatrixLocation);
 
         /* Swap front and back buffers */
         glfwSwapBuffers(window);
