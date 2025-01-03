@@ -50,6 +50,11 @@ namespace glimac
             return glm::lookAt(m_Position, m_Position + m_FrontVector, m_UpVector);
         }
 
+        glm::vec3 getPosition() const
+        {
+            return m_Position;
+        }
+
         void setCameraPositionY(float y)
         {
             m_Position.y = y;

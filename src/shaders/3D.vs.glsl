@@ -3,7 +3,7 @@
 // Attributs de sommet
 layout(location = 0) in vec3 aVertexPosition; // Position du sommet
 layout(location = 1) in vec3 aVertexNormal; // Normale du sommet
-layout(location = 2) in vec3 aVertexColor; // Couleur du sommet
+layout(location = 2) in vec4 aVertexColor; // Couleur du sommet
 layout(location = 3) in vec2 aVertexTexCoords; // Coordonnées de texture du sommet
 
 // Matrices de transformations reçues en uniform
@@ -14,7 +14,7 @@ uniform mat4 uNormalMatrix;
 // Sorties du shader
 out vec3 vPosition_vs; // Position du sommet transformé dans l'espace View
 out vec3 vNormal_vs; // Normale du sommet transformé dans l'espace View
-out vec3 vColor; // Couleur du sommet
+out vec4 vColor; // Couleur du sommet
 out vec2 vTexCoords; // Coordonnées de texture du sommet
 
 void main() {
