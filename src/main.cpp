@@ -17,6 +17,7 @@ const GLuint VERTEX_ATTR_NORMAL = 1;
 const GLuint VERTEX_ATTR_COLOR = 2;
 
 bool move = false;
+bool line = false;
 FreeflyCamera camera;
 float cameraHeight = 0.f;
 
@@ -33,7 +34,7 @@ struct Vertex3DColor
 
 static void key_callback(GLFWwindow * /*window*/, int key, int /*scancode*/, int action, int /*mods*/)
 {
-
+    // Movement
     if ((action == GLFW_PRESS || action == GLFW_REPEAT) && key == GLFW_KEY_W)
     {
         camera.moveFront(0.2);
@@ -51,6 +52,13 @@ static void key_callback(GLFWwindow * /*window*/, int key, int /*scancode*/, int
         camera.moveLeft(-0.2);
     }
     camera.setCameraPositionY(cameraHeight);
+
+    // Line mode
+    if (action == GLFW_PRESS && key == GLFW_KEY_F)
+    {
+        (line) ? glPolygonMode(GL_FRONT_AND_BACK, GL_FILL) : glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+        line = !line;
+    }
 }
 
 static void mouse_button_callback(GLFWwindow * /*window*/, int button, int action, int /*mods*/)
@@ -177,11 +185,11 @@ int main(int /*argc*/, char **argv)
 
     Vertex3DColor floorVertices[] = {
         Vertex3DColor(glm::vec3(-12.f, -21.f, 0.f), glm::vec3(0.4f, 0.25f, 0.2f)),
-        Vertex3DColor(glm::vec3(12.f, -21.f, 0.f), glm::vec3(0.4f, 0.25f, 0.2f)),
+        Vertex3DColor(glm::vec3(12.f, -21.f, 0.f), glm::vec3(0.4, 0.25f, 0.2f)),
         Vertex3DColor(glm::vec3(12.f, 21.f, 0.f), glm::vec3(0.4f, 0.25f, 0.2f)),
-        Vertex3DColor(glm::vec3(-12.f, 21.f, 0.f), glm::vec3(0.f, 0.25f, 0.2f)),
-        Vertex3DColor(glm::vec3(-12.f, -21.f, 0.f), glm::vec3(0.f, 0.25f, 0.2f)),
-        Vertex3DColor(glm::vec3(12.f, 21.f, 0.f), glm::vec3(0.f, 0.25f, 0.2f))};
+        Vertex3DColor(glm::vec3(-12.f, 21.f, 0.f), glm::vec3(0.4f, 0.25f, 0.2f)),
+        Vertex3DColor(glm::vec3(-12.f, -21.f, 0.f), glm::vec3(0.4f, 0.25f, 0.2f)),
+        Vertex3DColor(glm::vec3(12.f, 21.f, 0.f), glm::vec3(0.4f, 0.25f, 0.2f))};
 
     /* VBO & VAO */
     GLuint floorVBO, floorVAO;
@@ -207,12 +215,12 @@ int main(int /*argc*/, char **argv)
      ********/
 
     Vertex3DColor wallVertices[] = {
-        Vertex3DColor(glm::vec3(-12.f, -3.f, 0.f), glm::vec3(1.f, 0.25f, 0.2f)),
-        Vertex3DColor(glm::vec3(12.f, -3.f, 0.f), glm::vec3(1.f, 0.25f, 0.2f)),
-        Vertex3DColor(glm::vec3(12.f, 3.f, 0.f), glm::vec3(1.f, 0.25f, 0.2f)),
-        Vertex3DColor(glm::vec3(-12.f, 3.f, 0.f), glm::vec3(0.7f, 0.6f, 0.2f)),
-        Vertex3DColor(glm::vec3(-12.f, -3.f, 0.f), glm::vec3(0.7f, 0.6f, 0.2f)),
-        Vertex3DColor(glm::vec3(12.f, 3.f, 0.f), glm::vec3(0.7f, 0.6f, 0.2f))};
+        Vertex3DColor(glm::vec3(-12.f, -3.f, 0.f), glm::vec3(0.5f, 0.6f, 0.7f)),
+        Vertex3DColor(glm::vec3(12.f, -3.f, 0.f), glm::vec3(0.5f, 0.6f, 0.7f)),
+        Vertex3DColor(glm::vec3(12.f, 3.f, 0.f), glm::vec3(0.5f, 0.6f, 0.7f)),
+        Vertex3DColor(glm::vec3(-12.f, 3.f, 0.f), glm::vec3(0.5f, 0.6f, 0.7f)),
+        Vertex3DColor(glm::vec3(-12.f, -3.f, 0.f), glm::vec3(0.5f, 0.6f, 0.7f)),
+        Vertex3DColor(glm::vec3(12.f, 3.f, 0.f), glm::vec3(0.5f, 0.6f, 0.7f))};
 
     /* VBO & VAO */
     GLuint wallVBO, wallVAO;

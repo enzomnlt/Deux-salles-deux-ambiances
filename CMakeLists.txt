@@ -32,7 +32,7 @@ target_include_directories(DSDA PUBLIC glimac/third-party/glad/include)
 if (MSVC)
     target_compile_options(DSDA PRIVATE /W3)
 else()
-    target_compile_options(DSDA PRIVATE -Wall -Wextra -Wpedantic -pedantic-errors)
+    target_compile_options(DSDA PRIVATE -Wall -Wextra -Wpedantic -pedantic-errors -Wno-unknown-pragmas)
 endif()
 
 # Ajouter les options de débogage
