@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <vector>
 #include <src/stb_image.h>
+#include <glimac/Image.hpp>
 
 using namespace glimac;
 
@@ -33,9 +34,10 @@ struct Vertex3DColor
     glm::vec3 position;
     glm::vec3 normal;
     glm::vec4 color;
+    glm::vec2 texCoords;
 
-    Vertex3DColor(const glm::vec3 &position, const glm::vec3 &normal, const glm::vec4 &color)
-        : position(position), normal(normal), color(color)
+    Vertex3DColor(const glm::vec3 &position, const glm::vec3 &normal, const glm::vec4 &color, const glm::vec2 &texCoords)
+        : position(position), normal(normal), color(color), texCoords(texCoords)
     {
     }
 };
@@ -128,12 +130,19 @@ void initRecVBOandVAO(GLuint &vbo, GLuint &vao, const Vertex3DColor vertices[], 
     glEnableVertexAttribArray(VERTEX_ATTR_COLOR);
     glVertexAttribPointer(VERTEX_ATTR_COLOR, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex3DColor), (const GLvoid *)offsetof(Vertex3DColor, color));
 
+    glEnableVertexAttribArray(3);
+    glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex3DColor), (const GLvoid *)offsetof(Vertex3DColor, texCoords));
+
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 }
 
-void drawRec(GLuint vao, const glm::mat4 &MVMatrix, const glm::mat4 &ProjMatrix, GLint MVPMatrixLocation, GLint MVMatrixLocation, GLint NormalMatrixLocation)
+void drawRec(GLuint vao, const glm::mat4 &MVMatrix, const glm::mat4 &ProjMatrix, GLint MVPMatrixLocation, GLint MVMatrixLocation, GLint NormalMatrixLocation, GLuint texture, GLint textureLocation)
 {
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, texture);
+    glUniform1i(textureLocation, 0);
+
     glm::mat4 NormalMatrix = glm::transpose(glm::inverse(MVMatrix));
     glUniformMatrix4fv(MVPMatrixLocation, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MVMatrix));
     glUniformMatrix4fv(MVMatrixLocation, 1, GL_FALSE, glm::value_ptr(MVMatrix));
@@ -141,6 +150,8 @@ void drawRec(GLuint vao, const glm::mat4 &MVMatrix, const glm::mat4 &ProjMatrix,
     glBindVertexArray(vao);
     glDrawArrays(GL_TRIANGLES, 0, 6);
     glBindVertexArray(0);
+
+    glBindTexture(GL_TEXTURE_2D, 0);
 }
 
 void drawRec2(GLuint vao, const glm::mat4 &MVMatrix, const glm::mat4 &ProjMatrix, GLint MVPMatrixLocation)
@@ -225,6 +236,23 @@ int main(int /*argc*/, char **argv)
     GLint room1MVPMatrixLocation = glGetUniformLocation(room1Program.getGLId(), "uMVPMatrix");
     GLint room1MVMatrixLocation = glGetUniformLocation(room1Program.getGLId(), "uMVMatrix");
     GLint room1NormalMatrixLocation = glGetUniformLocation(room1Program.getGLId(), "uNormalMatrix");
+    GLint room1TextureLocation = glGetUniformLocation(room1Program.getGLId(), "uTexture");
+
+    // Load images
+    std::unique_ptr<Image> wood = loadImage("../assets/textures/wood.png");
+
+    if (wood == nullptr)
+    {
+        return -1;
+    }
+
+    GLuint woodTexture;
+    glGenTextures(1, &woodTexture);
+    glBindTexture(GL_TEXTURE_2D, woodTexture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, wood->getWidth(), wood->getHeight(), 0, GL_RGBA, GL_FLOAT, wood->getPixels());
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glBindTexture(GL_TEXTURE_2D, 0);
 
     /* Room 2 Shaders */
     Program room2Program = loadProgram(applicationPath.dirPath() + "../src/shaders/room2.vs.glsl",
@@ -250,12 +278,12 @@ int main(int /*argc*/, char **argv)
      *********/
 
     Vertex3DColor floorVertices[] = {
-        Vertex3DColor(glm::vec3(-12.f, -21.f, 0.f), glm::vec3(0.f, 0.f, -1.f), glm::vec4(0.4f, 0.25f, 0.2f, 1.f)),
-        Vertex3DColor(glm::vec3(12.f, -21.f, 0.f), glm::vec3(0.f, 0.f, -1.f), glm::vec4(0.4f, 0.25f, 0.2f, 1.f)),
-        Vertex3DColor(glm::vec3(12.f, 21.f, 0.f), glm::vec3(0.f, 0.f, -1.f), glm::vec4(0.4f, 0.25f, 0.2f, 1.f)),
-        Vertex3DColor(glm::vec3(-12.f, 21.f, 0.f), glm::vec3(0.f, 0.f, -1.f), glm::vec4(0.4f, 0.25f, 0.2f, 1.f)),
-        Vertex3DColor(glm::vec3(-12.f, -21.f, 0.f), glm::vec3(0.f, 0.f, -1.f), glm::vec4(0.4f, 0.25f, 0.2f, 1.f)),
-        Vertex3DColor(glm::vec3(12.f, 21.f, 0.f), glm::vec3(0.f, 0.f, -1.f), glm::vec4(0.4f, 0.25f, 0.2f, 1.f))};
+        Vertex3DColor(glm::vec3(-12.f, -21.f, 0.f), glm::vec3(0.f, 0.f, -1.f), glm::vec4(0.4f, 0.25f, 0.2f, 1.f), glm::vec2(0.f, 0.f)),
+        Vertex3DColor(glm::vec3(12.f, -21.f, 0.f), glm::vec3(0.f, 0.f, -1.f), glm::vec4(0.4f, 0.25f, 0.2f, 1.f), glm::vec2(1.f, 0.f)),
+        Vertex3DColor(glm::vec3(12.f, 21.f, 0.f), glm::vec3(0.f, 0.f, -1.f), glm::vec4(0.4f, 0.25f, 0.2f, 1.f), glm::vec2(1.f, 1.f)),
+        Vertex3DColor(glm::vec3(-12.f, 21.f, 0.f), glm::vec3(0.f, 0.f, -1.f), glm::vec4(0.4f, 0.25f, 0.2f, 1.f), glm::vec2(0.f, 1.f)),
+        Vertex3DColor(glm::vec3(-12.f, -21.f, 0.f), glm::vec3(0.f, 0.f, -1.f), glm::vec4(0.4f, 0.25f, 0.2f, 1.f), glm::vec2(0.f, 0.f)),
+        Vertex3DColor(glm::vec3(12.f, 21.f, 0.f), glm::vec3(0.f, 0.f, -1.f), glm::vec4(0.4f, 0.25f, 0.2f, 1.f), glm::vec2(1.f, 1.f))};
 
     /* VBO & VAO */
     GLuint floorVBO, floorVAO;
@@ -267,30 +295,30 @@ int main(int /*argc*/, char **argv)
 
     // Mur arrière
     Vertex3DColor backWallVertices[] = {
-        Vertex3DColor(glm::vec3(-12.f, -3.f, 0.f), glm::vec3(0.f, 0.f, -1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f)),
-        Vertex3DColor(glm::vec3(12.f, -3.f, 0.f), glm::vec3(0.f, 0.f, -1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f)),
-        Vertex3DColor(glm::vec3(12.f, 3.f, 0.f), glm::vec3(0.f, 0.f, -1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f)),
-        Vertex3DColor(glm::vec3(-12.f, 3.f, 0.f), glm::vec3(0.f, 0.f, -1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f)),
-        Vertex3DColor(glm::vec3(-12.f, -3.f, 0.f), glm::vec3(0.f, 0.f, -1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f)),
-        Vertex3DColor(glm::vec3(12.f, 3.f, 0.f), glm::vec3(0.f, 0.f, -1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f))};
+        Vertex3DColor(glm::vec3(-12.f, -3.f, 0.f), glm::vec3(0.f, 0.f, -1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f), glm::vec2(0.f, 0.f)),
+        Vertex3DColor(glm::vec3(12.f, -3.f, 0.f), glm::vec3(0.f, 0.f, -1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f), glm::vec2(1.f, 0.f)),
+        Vertex3DColor(glm::vec3(12.f, 3.f, 0.f), glm::vec3(0.f, 0.f, -1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f), glm::vec2(1.f, 1.f)),
+        Vertex3DColor(glm::vec3(-12.f, 3.f, 0.f), glm::vec3(0.f, 0.f, -1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f), glm::vec2(0.f, 1.f)),
+        Vertex3DColor(glm::vec3(-12.f, -3.f, 0.f), glm::vec3(0.f, 0.f, -1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f), glm::vec2(0.f, 0.f)),
+        Vertex3DColor(glm::vec3(12.f, 3.f, 0.f), glm::vec3(0.f, 0.f, -1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f), glm::vec2(1.f, 1.f))};
 
     // Mur gauche
     Vertex3DColor leftWallVertices[] = {
-        Vertex3DColor(glm::vec3(-12.f, -3.f, 0.f), glm::vec3(0.f, 0.f, 1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f)),
-        Vertex3DColor(glm::vec3(12.f, -3.f, 0.f), glm::vec3(0.f, 0.f, 1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f)),
-        Vertex3DColor(glm::vec3(12.f, 3.f, 0.f), glm::vec3(0.f, 0.f, 1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f)),
-        Vertex3DColor(glm::vec3(-12.f, 3.f, 0.f), glm::vec3(0.f, 0.f, 1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f)),
-        Vertex3DColor(glm::vec3(-12.f, -3.f, 0.f), glm::vec3(0.f, 0.f, 1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f)),
-        Vertex3DColor(glm::vec3(12.f, 3.f, 0.f), glm::vec3(0.f, 0.f, 1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f))};
+        Vertex3DColor(glm::vec3(-12.f, -3.f, 0.f), glm::vec3(0.f, 0.f, 1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f), glm::vec2(0.f, 0.f)),
+        Vertex3DColor(glm::vec3(12.f, -3.f, 0.f), glm::vec3(0.f, 0.f, 1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f), glm::vec2(1.f, 0.f)),
+        Vertex3DColor(glm::vec3(12.f, 3.f, 0.f), glm::vec3(0.f, 0.f, 1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f), glm::vec2(1.f, 1.f)),
+        Vertex3DColor(glm::vec3(-12.f, 3.f, 0.f), glm::vec3(0.f, 0.f, 1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f), glm::vec2(0.f, 1.f)),
+        Vertex3DColor(glm::vec3(-12.f, -3.f, 0.f), glm::vec3(0.f, 0.f, 1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f), glm::vec2(0.f, 0.f)),
+        Vertex3DColor(glm::vec3(12.f, 3.f, 0.f), glm::vec3(0.f, 0.f, 1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f), glm::vec2(1.f, 1.f))};
 
     // Mur droit
     Vertex3DColor rightWallVertices[] = {
-        Vertex3DColor(glm::vec3(-12.f, -3.f, 0.f), glm::vec3(0.f, 0.f, -1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f)),
-        Vertex3DColor(glm::vec3(12.f, -3.f, 0.f), glm::vec3(0.f, 0.f, -1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f)),
-        Vertex3DColor(glm::vec3(12.f, 3.f, 0.f), glm::vec3(0.f, 0.f, -1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f)),
-        Vertex3DColor(glm::vec3(-12.f, 3.f, 0.f), glm::vec3(0.f, 0.f, -1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f)),
-        Vertex3DColor(glm::vec3(-12.f, -3.f, 0.f), glm::vec3(0.f, 0.f, -1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f)),
-        Vertex3DColor(glm::vec3(12.f, 3.f, 0.f), glm::vec3(0.f, 0.f, -1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f))};
+        Vertex3DColor(glm::vec3(-12.f, -3.f, 0.f), glm::vec3(0.f, 0.f, -1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f), glm::vec2(0.f, 0.f)),
+        Vertex3DColor(glm::vec3(12.f, -3.f, 0.f), glm::vec3(0.f, 0.f, -1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f), glm::vec2(1.f, 0.f)),
+        Vertex3DColor(glm::vec3(12.f, 3.f, 0.f), glm::vec3(0.f, 0.f, -1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f), glm::vec2(1.f, 1.f)),
+        Vertex3DColor(glm::vec3(-12.f, 3.f, 0.f), glm::vec3(0.f, 0.f, -1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f), glm::vec2(0.f, 1.f)),
+        Vertex3DColor(glm::vec3(-12.f, -3.f, 0.f), glm::vec3(0.f, 0.f, -1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f), glm::vec2(0.f, 0.f)),
+        Vertex3DColor(glm::vec3(12.f, 3.f, 0.f), glm::vec3(0.f, 0.f, -1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f), glm::vec2(1.f, 1.f))};
 
     // Initialisation des VBO et VAO pour chaque mur
     GLuint backWallVBO, backWallVAO;
@@ -306,12 +334,12 @@ int main(int /*argc*/, char **argv)
      * SMALL WALLS
      **************/
     Vertex3DColor smallWallVertices[] = {
-        Vertex3DColor(glm::vec3(-5.f, -3.f, 0.f), glm::vec3(0.f, 0.f, 1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f)),
-        Vertex3DColor(glm::vec3(5.f, -3.f, 0.f), glm::vec3(0.f, 0.f, 1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f)),
-        Vertex3DColor(glm::vec3(5.f, 3.f, 0.f), glm::vec3(0.f, 0.f, 1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f)),
-        Vertex3DColor(glm::vec3(-5.f, 3.f, 0.f), glm::vec3(0.f, 0.f, 1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f)),
-        Vertex3DColor(glm::vec3(-5.f, -3.f, 0.f), glm::vec3(0.f, 0.f, 1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f)),
-        Vertex3DColor(glm::vec3(5.f, 3.f, 0.f), glm::vec3(0.f, 0.f, 1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f))};
+        Vertex3DColor(glm::vec3(-5.f, -3.f, 0.f), glm::vec3(0.f, 0.f, 1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f), glm::vec2(0.f, 0.f)),
+        Vertex3DColor(glm::vec3(5.f, -3.f, 0.f), glm::vec3(0.f, 0.f, 1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f), glm::vec2(1.f, 0.f)),
+        Vertex3DColor(glm::vec3(5.f, 3.f, 0.f), glm::vec3(0.f, 0.f, 1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f), glm::vec2(1.f, 1.f)),
+        Vertex3DColor(glm::vec3(-5.f, 3.f, 0.f), glm::vec3(0.f, 0.f, 1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f), glm::vec2(0.f, 1.f)),
+        Vertex3DColor(glm::vec3(-5.f, -3.f, 0.f), glm::vec3(0.f, 0.f, 1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f), glm::vec2(0.f, 0.f)),
+        Vertex3DColor(glm::vec3(5.f, 3.f, 0.f), glm::vec3(0.f, 0.f, 1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f), glm::vec2(1.f, 1.f))};
 
     /* VBO & VAO */
     GLuint smallWallVBO, smallWallVAO;
@@ -322,20 +350,20 @@ int main(int /*argc*/, char **argv)
      ****************/
 
     Vertex3DColor leftPassageWallVertices[] = {
-        Vertex3DColor(glm::vec3(-1.f, -3.f, 0.f), glm::vec3(0.f, 0.f, 1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f)),
-        Vertex3DColor(glm::vec3(1.f, -3.f, 0.f), glm::vec3(0.f, 0.f, 1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f)),
-        Vertex3DColor(glm::vec3(1.f, 3.f, 0.f), glm::vec3(0.f, 0.f, 1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f)),
-        Vertex3DColor(glm::vec3(-1.f, 3.f, 0.f), glm::vec3(0.f, 0.f, 1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f)),
-        Vertex3DColor(glm::vec3(-1.f, -3.f, 0.f), glm::vec3(0.f, 0.f, 1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f)),
-        Vertex3DColor(glm::vec3(1.f, 3.f, 0.f), glm::vec3(0.f, 0.f, 1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f))};
+        Vertex3DColor(glm::vec3(-1.f, -3.f, 0.f), glm::vec3(0.f, 0.f, 1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f), glm::vec2(0.f, 0.f)),
+        Vertex3DColor(glm::vec3(1.f, -3.f, 0.f), glm::vec3(0.f, 0.f, 1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f), glm::vec2(1.f, 0.f)),
+        Vertex3DColor(glm::vec3(1.f, 3.f, 0.f), glm::vec3(0.f, 0.f, 1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f), glm::vec2(1.f, 1.f)),
+        Vertex3DColor(glm::vec3(-1.f, 3.f, 0.f), glm::vec3(0.f, 0.f, 1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f), glm::vec2(0.f, 1.f)),
+        Vertex3DColor(glm::vec3(-1.f, -3.f, 0.f), glm::vec3(0.f, 0.f, 1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f), glm::vec2(0.f, 0.f)),
+        Vertex3DColor(glm::vec3(1.f, 3.f, 0.f), glm::vec3(0.f, 0.f, 1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f), glm::vec2(1.f, 1.f))};
 
     Vertex3DColor rightPassageWallVertices[] = {
-        Vertex3DColor(glm::vec3(-1.f, -3.f, 0.f), glm::vec3(0.f, 0.f, -1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f)),
-        Vertex3DColor(glm::vec3(1.f, -3.f, 0.f), glm::vec3(0.f, 0.f, -1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f)),
-        Vertex3DColor(glm::vec3(1.f, 3.f, 0.f), glm::vec3(0.f, 0.f, -1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f)),
-        Vertex3DColor(glm::vec3(-1.f, 3.f, 0.f), glm::vec3(0.f, 0.f, -1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f)),
-        Vertex3DColor(glm::vec3(-1.f, -3.f, 0.f), glm::vec3(0.f, 0.f, -1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f)),
-        Vertex3DColor(glm::vec3(1.f, 3.f, 0.f), glm::vec3(0.f, 0.f, -1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f))};
+        Vertex3DColor(glm::vec3(-1.f, -3.f, 0.f), glm::vec3(0.f, 0.f, -1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f), glm::vec2(0.f, 0.f)),
+        Vertex3DColor(glm::vec3(1.f, -3.f, 0.f), glm::vec3(0.f, 0.f, -1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f), glm::vec2(1.f, 0.f)),
+        Vertex3DColor(glm::vec3(1.f, 3.f, 0.f), glm::vec3(0.f, 0.f, -1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f), glm::vec2(1.f, 1.f)),
+        Vertex3DColor(glm::vec3(-1.f, 3.f, 0.f), glm::vec3(0.f, 0.f, -1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f), glm::vec2(0.f, 1.f)),
+        Vertex3DColor(glm::vec3(-1.f, -3.f, 0.f), glm::vec3(0.f, 0.f, -1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f), glm::vec2(0.f, 0.f)),
+        Vertex3DColor(glm::vec3(1.f, 3.f, 0.f), glm::vec3(0.f, 0.f, -1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f), glm::vec2(1.f, 1.f))};
 
     /* VBO & VAO */
     GLuint leftPassageWallVBO, leftPassageWallVAO;
@@ -349,12 +377,12 @@ int main(int /*argc*/, char **argv)
      *********/
 
     Vertex3DColor windowVertices[] = {
-        Vertex3DColor(glm::vec3(-0.5f, -0.5f, 0.f), glm::vec3(0.f, 0.f, 1.f), glm::vec4(1.f, 1.f, 1.f, 0.15f)),
-        Vertex3DColor(glm::vec3(0.5f, -0.5f, 0.f), glm::vec3(0.f, 0.f, 1.f), glm::vec4(1.f, 1.f, 1.f, 0.15f)),
-        Vertex3DColor(glm::vec3(0.5f, 0.5f, 0.f), glm::vec3(0.f, 0.f, 1.f), glm::vec4(1.f, 1.f, 1.f, 0.15f)),
-        Vertex3DColor(glm::vec3(-0.5f, 0.5f, 0.f), glm::vec3(0.f, 0.f, 1.f), glm::vec4(1.f, 1.f, 1.f, 0.15f)),
-        Vertex3DColor(glm::vec3(-0.5f, -0.5f, 0.f), glm::vec3(0.f, 0.f, 1.f), glm::vec4(1.f, 1.f, 1.f, 0.15f)),
-        Vertex3DColor(glm::vec3(0.5f, 0.5f, 0.f), glm::vec3(0.f, 0.f, 1.f), glm::vec4(1.f, 1.f, 1.f, 0.15f))};
+        Vertex3DColor(glm::vec3(-0.5f, -0.5f, 0.f), glm::vec3(0.f, 0.f, 1.f), glm::vec4(1.f, 1.f, 1.f, 0.15f), glm::vec2(0.f, 0.f)),
+        Vertex3DColor(glm::vec3(0.5f, -0.5f, 0.f), glm::vec3(0.f, 0.f, 1.f), glm::vec4(1.f, 1.f, 1.f, 0.15f), glm::vec2(1.f, 1.f)),
+        Vertex3DColor(glm::vec3(0.5f, 0.5f, 0.f), glm::vec3(0.f, 0.f, 1.f), glm::vec4(1.f, 1.f, 1.f, 0.15f), glm::vec2(1.f, 1.f)),
+        Vertex3DColor(glm::vec3(-0.5f, 0.5f, 0.f), glm::vec3(0.f, 0.f, 1.f), glm::vec4(1.f, 1.f, 1.f, 0.15f), glm::vec2(0.f, 1.f)),
+        Vertex3DColor(glm::vec3(-0.5f, -0.5f, 0.f), glm::vec3(0.f, 0.f, 1.f), glm::vec4(1.f, 1.f, 1.f, 0.15f), glm::vec2(0.f, 0.f)),
+        Vertex3DColor(glm::vec3(0.5f, 0.5f, 0.f), glm::vec3(0.f, 0.f, 1.f), glm::vec4(1.f, 1.f, 1.f, 0.15f), glm::vec2(1.f, 1.f))};
 
     /* VBO & VAO */
     GLuint windowVBO, windowVAO;
@@ -365,15 +393,14 @@ int main(int /*argc*/, char **argv)
      ***********/
 
     Vertex3DColor pedestalVertices[] = {
-        Vertex3DColor(glm::vec3(-1.f, -1.25f, -1.f), glm::vec3(0.f, 0.f, 1.f), glm::vec4(0.5f, 0.5f, 0.5f, 1.f)),
-        Vertex3DColor(glm::vec3(1.f, -1.25f, -1.f), glm::vec3(0.f, 0.f, 1.f), glm::vec4(0.5f, 0.5f, 0.5f, 1.f)),
-        Vertex3DColor(glm::vec3(1.f, 1.25f, -1.f), glm::vec3(0.f, 0.f, 1.f), glm::vec4(0.5f, 0.5f, 0.5f, 1.f)),
-        Vertex3DColor(glm::vec3(-1.f, 1.25f, -1.f), glm::vec3(0.f, 0.f, 1.f), glm::vec4(0.5f, 0.5f, 0.5f, 1.f)),
-        Vertex3DColor(glm::vec3(-1.f, -1.25f, 1.f), glm::vec3(0.f, 0.f, 1.f), glm::vec4(0.5f, 0.5f, 0.5f, 1.f)),
-        Vertex3DColor(glm::vec3(1.f, -1.25f, 1.f), glm::vec3(0.f, 0.f, 1.f), glm::vec4(0.5f, 0.5f, 0.5f, 1.f)),
-        Vertex3DColor(glm::vec3(1.f, 1.25f, 1.f), glm::vec3(0.f, 0.f, 1.f), glm::vec4(0.5f, 0.5f, 0.5f, 1.f)),
-        Vertex3DColor(glm::vec3(-1.f, 1.25f, 1.f), glm::vec3(0.f, 0.f, 1.f), glm::vec4(0.5f, 0.5f, 0.5f, 1.f)),
-    };
+        Vertex3DColor(glm::vec3(-1.f, -1.25f, -1.f), glm::vec3(0.f, 0.f, 1.f), glm::vec4(0.5f, 0.5f, 0.5f, 1.f), glm::vec2(0.f, 0.f)),
+        Vertex3DColor(glm::vec3(1.f, -1.25f, -1.f), glm::vec3(0.f, 0.f, 1.f), glm::vec4(0.5f, 0.5f, 0.5f, 1.f), glm::vec2(0.f, 0.f)),
+        Vertex3DColor(glm::vec3(1.f, 1.25f, -1.f), glm::vec3(0.f, 0.f, 1.f), glm::vec4(0.5f, 0.5f, 0.5f, 1.f), glm::vec2(0.f, 0.f)),
+        Vertex3DColor(glm::vec3(-1.f, 1.25f, -1.f), glm::vec3(0.f, 0.f, 1.f), glm::vec4(0.5f, 0.5f, 0.5f, 1.f), glm::vec2(0.f, 0.f)),
+        Vertex3DColor(glm::vec3(-1.f, -1.25f, 1.f), glm::vec3(0.f, 0.f, 1.f), glm::vec4(0.5f, 0.5f, 0.5f, 1.f), glm::vec2(0.f, 0.f)),
+        Vertex3DColor(glm::vec3(1.f, -1.25f, 1.f), glm::vec3(0.f, 0.f, 1.f), glm::vec4(0.5f, 0.5f, 0.5f, 1.f), glm::vec2(0.f, 0.f)),
+        Vertex3DColor(glm::vec3(1.f, 1.25f, 1.f), glm::vec3(0.f, 0.f, 1.f), glm::vec4(0.5f, 0.5f, 0.5f, 1.f), glm::vec2(0.f, 0.f)),
+        Vertex3DColor(glm::vec3(-1.f, 1.25f, 1.f), glm::vec3(0.f, 0.f, 1.f), glm::vec4(0.5f, 0.5f, 0.5f, 1.f), glm::vec2(1.f, 1.f))};
 
     GLuint pedestalIndices[] = {
         0, 1, 2, 2, 3, 0, // Front face
@@ -562,85 +589,85 @@ int main(int /*argc*/, char **argv)
             MVMatrix = glm::translate(ViewMatrix, glm::vec3(0, -3, -17));
             MVMatrix = glm::rotate(MVMatrix, glm::radians(90.f), glm::vec3(1, 0, 0));
             (room1)
-                ? drawRec(floorVAO, MVMatrix, ProjMatrix, room1MVPMatrixLocation, room1MVMatrixLocation, room1NormalMatrixLocation)
+                ? drawRec(floorVAO, MVMatrix, ProjMatrix, room1MVPMatrixLocation, room1MVMatrixLocation, room1NormalMatrixLocation, woodTexture, room1TextureLocation)
                 : drawRec2(floorVAO, MVMatrix, ProjMatrix, room2MVPMatrixLocation);
 
             /* Room 1 Back wall */
             MVMatrix = glm::translate(ViewMatrix, glm::vec3(0, 0, 4)); // Position in front
             (room1)
-                ? drawRec(backWallVBO, MVMatrix, ProjMatrix, room1MVPMatrixLocation, room1MVMatrixLocation, room1NormalMatrixLocation)
+                ? drawRec(backWallVBO, MVMatrix, ProjMatrix, room1MVPMatrixLocation, room1MVMatrixLocation, room1NormalMatrixLocation, woodTexture, room1TextureLocation)
                 : drawRec2(backWallVBO, MVMatrix, ProjMatrix, room2MVPMatrixLocation);
 
             /* Room 1 Left wall */
             MVMatrix = glm::translate(ViewMatrix, glm::vec3(-12, 0, -8)); // Position in front
             MVMatrix = glm::rotate(MVMatrix, glm::radians(90.f), glm::vec3(0, 1, 0));
             (room1)
-                ? drawRec(leftWallVBO, MVMatrix, ProjMatrix, room1MVPMatrixLocation, room1MVMatrixLocation, room1NormalMatrixLocation)
+                ? drawRec(leftWallVBO, MVMatrix, ProjMatrix, room1MVPMatrixLocation, room1MVMatrixLocation, room1NormalMatrixLocation, woodTexture, room1TextureLocation)
                 : drawRec2(leftWallVBO, MVMatrix, ProjMatrix, room2MVPMatrixLocation);
 
             /* Room 1 Right wall */
             MVMatrix = glm::translate(ViewMatrix, glm::vec3(12, 0, -8)); // Position in front
             MVMatrix = glm::rotate(MVMatrix, glm::radians(90.f), glm::vec3(0, 1, 0));
             (room1)
-                ? drawRec(rightWallVBO, MVMatrix, ProjMatrix, room1MVPMatrixLocation, room1MVMatrixLocation, room1NormalMatrixLocation)
+                ? drawRec(rightWallVBO, MVMatrix, ProjMatrix, room1MVPMatrixLocation, room1MVMatrixLocation, room1NormalMatrixLocation, woodTexture, room1TextureLocation)
                 : drawRec2(rightWallVBO, MVMatrix, ProjMatrix, room2MVPMatrixLocation);
 
             /* Room 1 Small left wall */
             glBindVertexArray(smallWallVAO);
             MVMatrix = glm::translate(ViewMatrix, glm::vec3(-7, 0, -16));
             (room1)
-                ? drawRec(smallWallVAO, MVMatrix, ProjMatrix, room1MVPMatrixLocation, room1MVMatrixLocation, room1NormalMatrixLocation)
+                ? drawRec(smallWallVAO, MVMatrix, ProjMatrix, room1MVPMatrixLocation, room1MVMatrixLocation, room1NormalMatrixLocation, woodTexture, room1TextureLocation)
                 : drawRec2(smallWallVAO, MVMatrix, ProjMatrix, room2MVPMatrixLocation);
 
             /* Room 1 Small right wall */
             MVMatrix = glm::translate(ViewMatrix, glm::vec3(7, 0, -16));
             (room1)
-                ? drawRec(smallWallVAO, MVMatrix, ProjMatrix, room1MVPMatrixLocation, room1MVMatrixLocation, room1NormalMatrixLocation)
+                ? drawRec(smallWallVAO, MVMatrix, ProjMatrix, room1MVPMatrixLocation, room1MVMatrixLocation, room1NormalMatrixLocation, woodTexture, room1TextureLocation)
                 : drawRec2(smallWallVAO, MVMatrix, ProjMatrix, room2MVPMatrixLocation);
 
             /* Passage walls */
             MVMatrix = glm::translate(ViewMatrix, glm::vec3(-2, 0, -17));
             MVMatrix = glm::rotate(MVMatrix, glm::radians(90.f), glm::vec3(0, 1, 0));
             (room1)
-                ? drawRec(leftPassageWallVAO, MVMatrix, ProjMatrix, room1MVPMatrixLocation, room1MVMatrixLocation, room1NormalMatrixLocation)
+                ? drawRec(leftPassageWallVAO, MVMatrix, ProjMatrix, room1MVPMatrixLocation, room1MVMatrixLocation, room1NormalMatrixLocation, woodTexture, room1TextureLocation)
                 : drawRec2(leftPassageWallVAO, MVMatrix, ProjMatrix, room2MVPMatrixLocation);
 
             MVMatrix = glm::translate(ViewMatrix, glm::vec3(2, 0, -17));
             MVMatrix = glm::rotate(MVMatrix, glm::radians(90.f), glm::vec3(0, 1, 0));
             (room1)
-                ? drawRec(rightPassageWallVAO, MVMatrix, ProjMatrix, room1MVPMatrixLocation, room1MVMatrixLocation, room1NormalMatrixLocation)
+                ? drawRec(rightPassageWallVAO, MVMatrix, ProjMatrix, room1MVPMatrixLocation, room1MVMatrixLocation, room1NormalMatrixLocation, woodTexture, room1TextureLocation)
                 : drawRec2(rightPassageWallVAO, MVMatrix, ProjMatrix, room2MVPMatrixLocation);
 
             /* Room 2 back wall */
             MVMatrix = glm::translate(ViewMatrix, glm::vec3(0, 0, -38)); // Position in front
             (room1)
-                ? drawRec(backWallVBO, MVMatrix, ProjMatrix, room1MVPMatrixLocation, room1MVMatrixLocation, room1NormalMatrixLocation)
+                ? drawRec(backWallVBO, MVMatrix, ProjMatrix, room1MVPMatrixLocation, room1MVMatrixLocation, room1NormalMatrixLocation, woodTexture, room1TextureLocation)
                 : drawRec2(backWallVBO, MVMatrix, ProjMatrix, room2MVPMatrixLocation);
 
             /* Room 2 Left wall */
             MVMatrix = glm::translate(ViewMatrix, glm::vec3(-12, 0, -26)); // Position in front
             MVMatrix = glm::rotate(MVMatrix, glm::radians(90.f), glm::vec3(0, 1, 0));
             (room1)
-                ? drawRec(leftWallVBO, MVMatrix, ProjMatrix, room1MVPMatrixLocation, room1MVMatrixLocation, room1NormalMatrixLocation)
+                ? drawRec(leftWallVBO, MVMatrix, ProjMatrix, room1MVPMatrixLocation, room1MVMatrixLocation, room1NormalMatrixLocation, woodTexture, room1TextureLocation)
                 : drawRec2(leftWallVBO, MVMatrix, ProjMatrix, room2MVPMatrixLocation);
 
             /* Room 2 Right wall */
             MVMatrix = glm::translate(ViewMatrix, glm::vec3(12, 0, -26)); // Position in front
             MVMatrix = glm::rotate(MVMatrix, glm::radians(90.f), glm::vec3(0, 1, 0));
             (room1)
-                ? drawRec(rightWallVAO, MVMatrix, ProjMatrix, room1MVPMatrixLocation, room1MVMatrixLocation, room1NormalMatrixLocation)
+                ? drawRec(rightWallVAO, MVMatrix, ProjMatrix, room1MVPMatrixLocation, room1MVMatrixLocation, room1NormalMatrixLocation, woodTexture, room1TextureLocation)
                 : drawRec2(rightWallVAO, MVMatrix, ProjMatrix, room2MVPMatrixLocation);
 
             /* Room 2 Small left wall */
             MVMatrix = glm::translate(ViewMatrix, glm::vec3(-7, 0, -18));
             (room1)
-                ? drawRec(smallWallVAO, MVMatrix, ProjMatrix, room1MVPMatrixLocation, room1MVMatrixLocation, room1NormalMatrixLocation)
+                ? drawRec(smallWallVAO, MVMatrix, ProjMatrix, room1MVPMatrixLocation, room1MVMatrixLocation, room1NormalMatrixLocation, woodTexture, room1TextureLocation)
                 : drawRec2(smallWallVAO, MVMatrix, ProjMatrix, room2MVPMatrixLocation);
 
             /* Room 2 Small right wall */
             MVMatrix = glm::translate(ViewMatrix, glm::vec3(7, 0, -18));
             (room1)
-                ? drawRec(smallWallVAO, MVMatrix, ProjMatrix, room1MVPMatrixLocation, room1MVMatrixLocation, room1NormalMatrixLocation)
+                ? drawRec(smallWallVAO, MVMatrix, ProjMatrix, room1MVPMatrixLocation, room1MVMatrixLocation, room1NormalMatrixLocation, woodTexture, room1TextureLocation)
                 : drawRec2(smallWallVAO, MVMatrix, ProjMatrix, room2MVPMatrixLocation);
         }
 

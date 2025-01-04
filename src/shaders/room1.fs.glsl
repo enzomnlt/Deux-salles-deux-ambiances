@@ -16,6 +16,8 @@ uniform vec3 uLightIntensity1;
 uniform vec3 uLightPos2_vs;
 uniform vec3 uLightIntensity2;
 
+uniform sampler2D uTexture;
+
 vec3 blinnPhong(vec3 lightPos, vec3 lightIntensity) {
     vec3 N = normalize(vNormal_vs);
     vec3 L = normalize(lightPos - vPosition_vs);
@@ -35,5 +37,8 @@ void main()
 {
     vec3 color1 = blinnPhong(uLightPos1_vs, uLightIntensity1);
     vec3 color2 = blinnPhong(uLightPos2_vs, uLightIntensity2);
-    fFragColor = color1 + color2;
+    vec3 lighting = color1 + color2;
+
+    vec4 textureColor = texture(uTexture, vTexCoords);
+    fFragColor = lighting * textureColor.rgb;
 }
