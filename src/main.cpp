@@ -9,6 +9,7 @@
 #include <cstddef>
 #include <algorithm>
 #include <vector>
+#include <src/stb_image.h>
 
 using namespace glimac;
 
@@ -20,9 +21,10 @@ const GLuint VERTEX_ATTR_NORMAL = 1;
 const GLuint VERTEX_ATTR_COLOR = 2;
 
 bool move = false;
-bool line = false;
-FreeflyCamera camera;
 float cameraHeight = 0.f;
+FreeflyCamera camera;
+
+bool line = false;
 
 struct Vertex3DColor
 {
@@ -140,6 +142,37 @@ float calculateDistance(const glm::vec3 &cameraPosition, const glm::vec3 &object
     return glm::length(cameraPosition - objectPosition);
 }
 
+GLuint loadCubemap(std::vector<std::string> faces)
+{
+    GLuint textureID;
+    glGenTextures(1, &textureID);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, textureID);
+
+    int width, height, nrChannels;
+    for (unsigned int i = 0; i < faces.size(); i++)
+    {
+        unsigned char *data = stbi_load(faces[i].c_str(), &width, &height, &nrChannels, 0);
+        if (data)
+        {
+            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,
+                         0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+            stbi_image_free(data);
+        }
+        else
+        {
+            std::cerr << "Cubemap texture failed to load at path: " << faces[i] << std::endl;
+            stbi_image_free(data);
+        }
+    }
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
+    return textureID;
+}
+
 int main(int /*argc*/, char **argv)
 {
     /* Initialize the library */
@@ -164,20 +197,25 @@ int main(int /*argc*/, char **argv)
     }
 
     FilePath applicationPath(argv[0]);
+
+    /* Skybox shaders */
+    Program skyboxProgram = loadProgram(applicationPath.dirPath() + "../src/shaders/skybox.vs.glsl",
+                                        applicationPath.dirPath() + "../src/shaders/skybox.fs.glsl");
+
+    /* 3d shaders */
     Program sphereProgram = loadProgram(applicationPath.dirPath() + "../src/shaders/3D.vs.glsl",
                                         applicationPath.dirPath() + "../src/shaders/normals.fs.glsl");
     sphereProgram.use();
 
-    // Get uniform location for sphere
     GLint sphereMVPMatrixLocation = glGetUniformLocation(sphereProgram.getGLId(), "uMVPMatrix");
     GLint sphereMVMatrixLocation = glGetUniformLocation(sphereProgram.getGLId(), "uMVMatrix");
     GLint sphereNormalMatrixLocation = glGetUniformLocation(sphereProgram.getGLId(), "uNormalMatrix");
 
+    /* Wall shaders */
     Program squareProgram = loadProgram(applicationPath.dirPath() + "../src/shaders/3D.vs.glsl",
                                         applicationPath.dirPath() + "../src/shaders/color.fs.glsl");
     squareProgram.use();
 
-    // Get uniform location for square
     GLint squareMVPMatrixLocation = glGetUniformLocation(squareProgram.getGLId(), "uMVPMatrix");
     GLint squareMVMatrixLocation = glGetUniformLocation(squareProgram.getGLId(), "uMVMatrix");
     GLint squareNormalMatrixLocation = glGetUniformLocation(squareProgram.getGLId(), "uNormalMatrix");
@@ -308,12 +346,12 @@ int main(int /*argc*/, char **argv)
      ****************/
 
     Vertex3DColor passageWallVertices[] = {
-        Vertex3DColor(glm::vec3(-1.f, -3.f, 0.f), glm::vec4(0.5f, 1.f, 0.7f, 1.f)),
-        Vertex3DColor(glm::vec3(1.f, -3.f, 0.f), glm::vec4(0.5f, 1.f, 0.7f, 1.f)),
-        Vertex3DColor(glm::vec3(1.f, 3.f, 0.f), glm::vec4(0.5f, 1.f, 0.7f, 1.f)),
-        Vertex3DColor(glm::vec3(-1.f, 3.f, 0.f), glm::vec4(0.5f, 1.f, 0.7f, 1.f)),
-        Vertex3DColor(glm::vec3(-1.f, -3.f, 0.f), glm::vec4(0.5f, 1.f, 0.7f, 1.f)),
-        Vertex3DColor(glm::vec3(1.f, 3.f, 0.f), glm::vec4(0.5f, 1.f, 0.7f, 1.f))};
+        Vertex3DColor(glm::vec3(-1.f, -3.f, 0.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f)),
+        Vertex3DColor(glm::vec3(1.f, -3.f, 0.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f)),
+        Vertex3DColor(glm::vec3(1.f, 3.f, 0.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f)),
+        Vertex3DColor(glm::vec3(-1.f, 3.f, 0.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f)),
+        Vertex3DColor(glm::vec3(-1.f, -3.f, 0.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f)),
+        Vertex3DColor(glm::vec3(1.f, 3.f, 0.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f))};
 
     /* VBO & VAO */
     GLuint passageWallVBO, passageWallVAO;
@@ -381,6 +419,75 @@ int main(int /*argc*/, char **argv)
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 
+    /**********
+     * SKYBOX
+     **********/
+
+    float skyboxVertices[] = {
+        // positions
+        -1.0f, 1.0f, -1.0f,
+        -1.0f, -1.0f, -1.0f,
+        1.0f, -1.0f, -1.0f,
+        1.0f, -1.0f, -1.0f,
+        1.0f, 1.0f, -1.0f,
+        -1.0f, 1.0f, -1.0f,
+
+        -1.0f, -1.0f, 1.0f,
+        -1.0f, -1.0f, -1.0f,
+        -1.0f, 1.0f, -1.0f,
+        -1.0f, 1.0f, -1.0f,
+        -1.0f, 1.0f, 1.0f,
+        -1.0f, -1.0f, 1.0f,
+
+        1.0f, -1.0f, -1.0f,
+        1.0f, -1.0f, 1.0f,
+        1.0f, 1.0f, 1.0f,
+        1.0f, 1.0f, 1.0f,
+        1.0f, 1.0f, -1.0f,
+        1.0f, -1.0f, -1.0f,
+
+        -1.0f, -1.0f, 1.0f,
+        -1.0f, 1.0f, 1.0f,
+        1.0f, 1.0f, 1.0f,
+        1.0f, 1.0f, 1.0f,
+        1.0f, -1.0f, 1.0f,
+        -1.0f, -1.0f, 1.0f,
+
+        -1.0f, 1.0f, -1.0f,
+        1.0f, 1.0f, -1.0f,
+        1.0f, 1.0f, 1.0f,
+        1.0f, 1.0f, 1.0f,
+        -1.0f, 1.0f, 1.0f,
+        -1.0f, 1.0f, -1.0f,
+
+        -1.0f, -1.0f, -1.0f,
+        -1.0f, -1.0f, 1.0f,
+        1.0f, -1.0f, -1.0f,
+        1.0f, -1.0f, -1.0f,
+        -1.0f, -1.0f, 1.0f,
+        1.0f, -1.0f, 1.0f};
+
+    // Load skybox textures
+    std::vector<std::string> faces{
+        applicationPath.dirPath() + "/assets/skybox/right.jpg",
+        applicationPath.dirPath() + "/assets/skybox/left.jpg",
+        applicationPath.dirPath() + "/assets/skybox/top.jpg",
+        applicationPath.dirPath() + "/assets/skybox/bottom.jpg",
+        applicationPath.dirPath() + "/assets/skybox/front.jpg",
+        applicationPath.dirPath() + "/assets/skybox/back.jpg"};
+    GLuint cubemapTexture = loadCubemap(faces);
+
+    // Skybox VAO and VBO
+    GLuint skyboxVAO, skyboxVBO;
+    glGenVertexArrays(1, &skyboxVAO);
+    glGenBuffers(1, &skyboxVBO);
+    glBindVertexArray(skyboxVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, skyboxVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(skyboxVertices), &skyboxVertices, GL_STATIC_DRAW);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0);
+    glBindVertexArray(0);
+
     while (!glfwWindowShouldClose(window))
     {
         glClearColor(0.f, 0.f, 0.f, 1.f);
@@ -395,107 +502,124 @@ int main(int /*argc*/, char **argv)
         glm::mat4 MVMatrix = glm::translate(ViewMatrix, glm::vec3(0, 0, 0));
         glm::mat4 NormalMatrix = glm::transpose(glm::inverse(MVMatrix));
 
-        // Sphere
-        sphereProgram.use();
-        glBindVertexArray(vao);
+        /* Skybox */
+        {
+            glDepthFunc(GL_LEQUAL);
+            skyboxProgram.use();
+            glm::mat4 view = glm::mat4(glm::mat3(camera.getViewMatrix())); // Remove translation from the view matrix
+            glm::mat4 projection = glm::perspective(glm::radians(45.0f), (float)window_width / window_height, 0.1f, 100.0f);
+            glUniformMatrix4fv(glGetUniformLocation(skyboxProgram.getGLId(), "view"), 1, GL_FALSE, glm::value_ptr(view));
+            glUniformMatrix4fv(glGetUniformLocation(skyboxProgram.getGLId(), "projection"), 1, GL_FALSE, glm::value_ptr(projection));
+            glBindVertexArray(skyboxVAO);
+            glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
+            glDrawArrays(GL_TRIANGLES, 0, 36);
+            glBindVertexArray(0);
+            glDepthFunc(GL_LESS);
+        }
 
-        MVMatrix = glm::translate(ViewMatrix, glm::vec3(0, 0, -5));
-        MVMatrix = glm::rotate(MVMatrix, (float)glfwGetTime() * 0.5f, glm::vec3(0, 1, 0)); // Translation * Rotation
-        glUniformMatrix4fv(sphereMVPMatrixLocation, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MVMatrix));
-        glUniformMatrix4fv(sphereMVMatrixLocation, 1, GL_FALSE, glm::value_ptr(MVMatrix));
-        glUniformMatrix4fv(sphereNormalMatrixLocation, 1, GL_FALSE, glm::value_ptr(NormalMatrix));
-        glDrawArrays(GL_TRIANGLES, 0, sphere.getVertexCount());
-        glBindVertexArray(0);
+        {
+            // Sphere
+            sphereProgram.use();
+            glBindVertexArray(vao);
 
-        // Cone
-        sphereProgram.use();
-        glBindVertexArray(conevao);
+            MVMatrix = glm::translate(ViewMatrix, glm::vec3(0, 0, -5));
+            MVMatrix = glm::rotate(MVMatrix, (float)glfwGetTime() * 0.5f, glm::vec3(0, 1, 0)); // Translation * Rotation
+            glUniformMatrix4fv(sphereMVPMatrixLocation, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MVMatrix));
+            glUniformMatrix4fv(sphereMVMatrixLocation, 1, GL_FALSE, glm::value_ptr(MVMatrix));
+            glUniformMatrix4fv(sphereNormalMatrixLocation, 1, GL_FALSE, glm::value_ptr(NormalMatrix));
+            glDrawArrays(GL_TRIANGLES, 0, sphere.getVertexCount());
+            glBindVertexArray(0);
 
-        MVMatrix = glm::translate(ViewMatrix, glm::vec3(0, -2, -7));
-        MVMatrix = glm::rotate(MVMatrix, (float)glfwGetTime() * 0.5f, glm::vec3(0, 1, 0)); // Translation * Rotation
-        glUniformMatrix4fv(sphereMVPMatrixLocation, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MVMatrix));
-        glUniformMatrix4fv(sphereMVMatrixLocation, 1, GL_FALSE, glm::value_ptr(MVMatrix));
-        glUniformMatrix4fv(sphereNormalMatrixLocation, 1, GL_FALSE, glm::value_ptr(NormalMatrix));
-        glDrawArrays(GL_TRIANGLES, 0, cone.getVertexCount());
-        glBindVertexArray(0);
+            // Cone
+            sphereProgram.use();
+            glBindVertexArray(conevao);
 
-        // Cone
-        sphereProgram.use();
-        glBindVertexArray(conevao);
+            MVMatrix = glm::translate(ViewMatrix, glm::vec3(0, -2, -7));
+            MVMatrix = glm::rotate(MVMatrix, (float)glfwGetTime() * 0.5f, glm::vec3(0, 1, 0)); // Translation * Rotation
+            glUniformMatrix4fv(sphereMVPMatrixLocation, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MVMatrix));
+            glUniformMatrix4fv(sphereMVMatrixLocation, 1, GL_FALSE, glm::value_ptr(MVMatrix));
+            glUniformMatrix4fv(sphereNormalMatrixLocation, 1, GL_FALSE, glm::value_ptr(NormalMatrix));
+            glDrawArrays(GL_TRIANGLES, 0, cone.getVertexCount());
+            glBindVertexArray(0);
 
-        MVMatrix = glm::translate(ViewMatrix, glm::vec3(0, 1, -7));
-        MVMatrix = glm::rotate(MVMatrix, glm::radians(180.f), glm::vec3(1, 0, 0));
-        MVMatrix = glm::rotate(MVMatrix, (float)glfwGetTime() * -0.5f, glm::vec3(0, 1, 0)); // Translation * Rotation
-        glUniformMatrix4fv(sphereMVPMatrixLocation, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MVMatrix));
-        glUniformMatrix4fv(sphereMVMatrixLocation, 1, GL_FALSE, glm::value_ptr(MVMatrix));
-        glUniformMatrix4fv(sphereNormalMatrixLocation, 1, GL_FALSE, glm::value_ptr(NormalMatrix));
-        glDrawArrays(GL_TRIANGLES, 0, cone.getVertexCount());
-        glBindVertexArray(0);
+            // Cone
+            sphereProgram.use();
+            glBindVertexArray(conevao);
+
+            MVMatrix = glm::translate(ViewMatrix, glm::vec3(0, 1, -7));
+            MVMatrix = glm::rotate(MVMatrix, glm::radians(180.f), glm::vec3(1, 0, 0));
+            MVMatrix = glm::rotate(MVMatrix, (float)glfwGetTime() * -0.5f, glm::vec3(0, 1, 0)); // Translation * Rotation
+            glUniformMatrix4fv(sphereMVPMatrixLocation, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MVMatrix));
+            glUniformMatrix4fv(sphereMVMatrixLocation, 1, GL_FALSE, glm::value_ptr(MVMatrix));
+            glUniformMatrix4fv(sphereNormalMatrixLocation, 1, GL_FALSE, glm::value_ptr(NormalMatrix));
+            glDrawArrays(GL_TRIANGLES, 0, cone.getVertexCount());
+            glBindVertexArray(0);
+        }
 
         /*****************
          * SCENE GEOMETRY
          *****************/
+        {
+            /* Floor */
+            squareProgram.use();
+            MVMatrix = glm::translate(ViewMatrix, glm::vec3(0, -3, -17));
+            MVMatrix = glm::rotate(MVMatrix, glm::radians(90.f), glm::vec3(1, 0, 0));
+            drawWall(floorVAO, MVMatrix, ProjMatrix, squareMVPMatrixLocation, squareMVMatrixLocation, squareNormalMatrixLocation);
 
-        squareProgram.use();
+            /* Room 1 Back wall */
+            MVMatrix = glm::translate(ViewMatrix, glm::vec3(0, 0, 4)); // Position in front
+            drawWall(wallVAO, MVMatrix, ProjMatrix, squareMVPMatrixLocation, squareMVMatrixLocation, squareNormalMatrixLocation);
 
-        // Floor
-        MVMatrix = glm::translate(ViewMatrix, glm::vec3(0, -3, -17));
-        MVMatrix = glm::rotate(MVMatrix, glm::radians(90.f), glm::vec3(1, 0, 0));
-        drawWall(floorVAO, MVMatrix, ProjMatrix, squareMVPMatrixLocation, squareMVMatrixLocation, squareNormalMatrixLocation);
+            /* Room 1 Left wall */
+            MVMatrix = glm::translate(ViewMatrix, glm::vec3(-12, 0, -8)); // Position in front
+            MVMatrix = glm::rotate(MVMatrix, glm::radians(90.f), glm::vec3(0, 1, 0));
+            drawWall(wallVAO, MVMatrix, ProjMatrix, squareMVPMatrixLocation, squareMVMatrixLocation, squareNormalMatrixLocation);
 
-        // Room 1 Back wall
-        MVMatrix = glm::translate(ViewMatrix, glm::vec3(0, 0, 4)); // Position in front
-        drawWall(wallVAO, MVMatrix, ProjMatrix, squareMVPMatrixLocation, squareMVMatrixLocation, squareNormalMatrixLocation);
+            /* Room 1 Right wall */
+            MVMatrix = glm::translate(ViewMatrix, glm::vec3(12, 0, -8)); // Position in front
+            MVMatrix = glm::rotate(MVMatrix, glm::radians(90.f), glm::vec3(0, 1, 0));
+            drawWall(wallVAO, MVMatrix, ProjMatrix, squareMVPMatrixLocation, squareMVMatrixLocation, squareNormalMatrixLocation);
 
-        // Room 1 Left wall
-        MVMatrix = glm::translate(ViewMatrix, glm::vec3(-12, 0, -8)); // Position in front
-        MVMatrix = glm::rotate(MVMatrix, glm::radians(90.f), glm::vec3(0, 1, 0));
-        drawWall(wallVAO, MVMatrix, ProjMatrix, squareMVPMatrixLocation, squareMVMatrixLocation, squareNormalMatrixLocation);
+            /* Room 1 Small left wall */
+            glBindVertexArray(smallWallVAO);
+            MVMatrix = glm::translate(ViewMatrix, glm::vec3(-7, 0, -16));
+            drawWall(smallWallVAO, MVMatrix, ProjMatrix, squareMVPMatrixLocation, squareMVMatrixLocation, squareNormalMatrixLocation);
 
-        // Room 1 Right wall
-        MVMatrix = glm::translate(ViewMatrix, glm::vec3(12, 0, -8)); // Position in front
-        MVMatrix = glm::rotate(MVMatrix, glm::radians(90.f), glm::vec3(0, 1, 0));
-        drawWall(wallVAO, MVMatrix, ProjMatrix, squareMVPMatrixLocation, squareMVMatrixLocation, squareNormalMatrixLocation);
+            /* Room 1 Small right wall */
+            MVMatrix = glm::translate(ViewMatrix, glm::vec3(7, 0, -16));
+            drawWall(smallWallVAO, MVMatrix, ProjMatrix, squareMVPMatrixLocation, squareMVMatrixLocation, squareNormalMatrixLocation);
 
-        // Room 1 Small left wall
-        glBindVertexArray(smallWallVAO);
-        MVMatrix = glm::translate(ViewMatrix, glm::vec3(-7, 0, -16));
-        drawWall(smallWallVAO, MVMatrix, ProjMatrix, squareMVPMatrixLocation, squareMVMatrixLocation, squareNormalMatrixLocation);
+            /* Passage walls */
+            MVMatrix = glm::translate(ViewMatrix, glm::vec3(-2, 0, -17));
+            MVMatrix = glm::rotate(MVMatrix, glm::radians(90.f), glm::vec3(0, 1, 0));
+            drawWall(passageWallVAO, MVMatrix, ProjMatrix, squareMVPMatrixLocation, squareMVMatrixLocation, squareNormalMatrixLocation);
 
-        // Room 1 Small right wall
-        MVMatrix = glm::translate(ViewMatrix, glm::vec3(7, 0, -16));
-        drawWall(smallWallVAO, MVMatrix, ProjMatrix, squareMVPMatrixLocation, squareMVMatrixLocation, squareNormalMatrixLocation);
+            MVMatrix = glm::translate(ViewMatrix, glm::vec3(2, 0, -17));
+            MVMatrix = glm::rotate(MVMatrix, glm::radians(90.f), glm::vec3(0, 1, 0));
+            drawWall(passageWallVAO, MVMatrix, ProjMatrix, squareMVPMatrixLocation, squareMVMatrixLocation, squareNormalMatrixLocation);
 
-        // Passage walls
-        MVMatrix = glm::translate(ViewMatrix, glm::vec3(-2, 0, -17));
-        MVMatrix = glm::rotate(MVMatrix, glm::radians(90.f), glm::vec3(0, 1, 0));
-        drawWall(passageWallVAO, MVMatrix, ProjMatrix, squareMVPMatrixLocation, squareMVMatrixLocation, squareNormalMatrixLocation);
+            /* Room 2 back wall */
+            MVMatrix = glm::translate(ViewMatrix, glm::vec3(0, 0, -38)); // Position in front
+            drawWall(wallVAO, MVMatrix, ProjMatrix, squareMVPMatrixLocation, squareMVMatrixLocation, squareNormalMatrixLocation);
 
-        MVMatrix = glm::translate(ViewMatrix, glm::vec3(2, 0, -17));
-        MVMatrix = glm::rotate(MVMatrix, glm::radians(90.f), glm::vec3(0, 1, 0));
-        drawWall(passageWallVAO, MVMatrix, ProjMatrix, squareMVPMatrixLocation, squareMVMatrixLocation, squareNormalMatrixLocation);
+            /* Room 2 Left wall */
+            MVMatrix = glm::translate(ViewMatrix, glm::vec3(-12, 0, -26)); // Position in front
+            MVMatrix = glm::rotate(MVMatrix, glm::radians(90.f), glm::vec3(0, 1, 0));
+            drawWall(wallVAO, MVMatrix, ProjMatrix, squareMVPMatrixLocation, squareMVMatrixLocation, squareNormalMatrixLocation);
 
-        // Room 2 back wall
-        MVMatrix = glm::translate(ViewMatrix, glm::vec3(0, 0, -38)); // Position in front
-        drawWall(wallVAO, MVMatrix, ProjMatrix, squareMVPMatrixLocation, squareMVMatrixLocation, squareNormalMatrixLocation);
+            /* Room 2 Right wall */
+            MVMatrix = glm::translate(ViewMatrix, glm::vec3(12, 0, -26)); // Position in front
+            MVMatrix = glm::rotate(MVMatrix, glm::radians(90.f), glm::vec3(0, 1, 0));
+            drawWall(wallVAO, MVMatrix, ProjMatrix, squareMVPMatrixLocation, squareMVMatrixLocation, squareNormalMatrixLocation);
 
-        // Room 2 Left wall
-        MVMatrix = glm::translate(ViewMatrix, glm::vec3(-12, 0, -26)); // Position in front
-        MVMatrix = glm::rotate(MVMatrix, glm::radians(90.f), glm::vec3(0, 1, 0));
-        drawWall(wallVAO, MVMatrix, ProjMatrix, squareMVPMatrixLocation, squareMVMatrixLocation, squareNormalMatrixLocation);
+            /* Room 2 Small left wall */
+            MVMatrix = glm::translate(ViewMatrix, glm::vec3(-7, 0, -18));
+            drawWall(smallWallVAO, MVMatrix, ProjMatrix, squareMVPMatrixLocation, squareMVMatrixLocation, squareNormalMatrixLocation);
 
-        // Room 2 Right wall
-        MVMatrix = glm::translate(ViewMatrix, glm::vec3(12, 0, -26)); // Position in front
-        MVMatrix = glm::rotate(MVMatrix, glm::radians(90.f), glm::vec3(0, 1, 0));
-        drawWall(wallVAO, MVMatrix, ProjMatrix, squareMVPMatrixLocation, squareMVMatrixLocation, squareNormalMatrixLocation);
-
-        // Room 2 Small left wall
-        MVMatrix = glm::translate(ViewMatrix, glm::vec3(-7, 0, -18));
-        drawWall(smallWallVAO, MVMatrix, ProjMatrix, squareMVPMatrixLocation, squareMVMatrixLocation, squareNormalMatrixLocation);
-
-        // Room 2 Small right wall
-        MVMatrix = glm::translate(ViewMatrix, glm::vec3(7, 0, -18));
-        drawWall(smallWallVAO, MVMatrix, ProjMatrix, squareMVPMatrixLocation, squareMVMatrixLocation, squareNormalMatrixLocation);
+            /* Room 2 Small right wall */
+            MVMatrix = glm::translate(ViewMatrix, glm::vec3(7, 0, -18));
+            drawWall(smallWallVAO, MVMatrix, ProjMatrix, squareMVPMatrixLocation, squareMVMatrixLocation, squareNormalMatrixLocation);
+        }
 
         // Pedestal
         MVMatrix = glm::translate(ViewMatrix, glm::vec3(0, -1.75f, -24.75));
