@@ -304,21 +304,21 @@ int main(int /*argc*/, char **argv)
 
     // Mur gauche
     Vertex3DColor leftWallVertices[] = {
-        Vertex3DColor(glm::vec3(-12.f, -3.f, 0.f), glm::vec3(0.f, 0.f, 1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f), glm::vec2(0.f, 0.f)),
-        Vertex3DColor(glm::vec3(12.f, -3.f, 0.f), glm::vec3(0.f, 0.f, 1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f), glm::vec2(1.f, 0.f)),
-        Vertex3DColor(glm::vec3(12.f, 3.f, 0.f), glm::vec3(0.f, 0.f, 1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f), glm::vec2(1.f, 1.f)),
-        Vertex3DColor(glm::vec3(-12.f, 3.f, 0.f), glm::vec3(0.f, 0.f, 1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f), glm::vec2(0.f, 1.f)),
-        Vertex3DColor(glm::vec3(-12.f, -3.f, 0.f), glm::vec3(0.f, 0.f, 1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f), glm::vec2(0.f, 0.f)),
-        Vertex3DColor(glm::vec3(12.f, 3.f, 0.f), glm::vec3(0.f, 0.f, 1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f), glm::vec2(1.f, 1.f))};
+        Vertex3DColor(glm::vec3(-10.f, -3.f, 0.f), glm::vec3(0.f, 0.f, 1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f), glm::vec2(0.f, 0.f)),
+        Vertex3DColor(glm::vec3(10.f, -3.f, 0.f), glm::vec3(0.f, 0.f, 1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f), glm::vec2(1.f, 0.f)),
+        Vertex3DColor(glm::vec3(10.f, 3.f, 0.f), glm::vec3(0.f, 0.f, 1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f), glm::vec2(1.f, 1.f)),
+        Vertex3DColor(glm::vec3(-10.f, 3.f, 0.f), glm::vec3(0.f, 0.f, 1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f), glm::vec2(0.f, 1.f)),
+        Vertex3DColor(glm::vec3(-10.f, -3.f, 0.f), glm::vec3(0.f, 0.f, 1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f), glm::vec2(0.f, 0.f)),
+        Vertex3DColor(glm::vec3(10.f, 3.f, 0.f), glm::vec3(0.f, 0.f, 1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f), glm::vec2(1.f, 1.f))};
 
     // Mur droit
     Vertex3DColor rightWallVertices[] = {
-        Vertex3DColor(glm::vec3(-12.f, -3.f, 0.f), glm::vec3(0.f, 0.f, -1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f), glm::vec2(0.f, 0.f)),
-        Vertex3DColor(glm::vec3(12.f, -3.f, 0.f), glm::vec3(0.f, 0.f, -1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f), glm::vec2(1.f, 0.f)),
-        Vertex3DColor(glm::vec3(12.f, 3.f, 0.f), glm::vec3(0.f, 0.f, -1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f), glm::vec2(1.f, 1.f)),
-        Vertex3DColor(glm::vec3(-12.f, 3.f, 0.f), glm::vec3(0.f, 0.f, -1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f), glm::vec2(0.f, 1.f)),
-        Vertex3DColor(glm::vec3(-12.f, -3.f, 0.f), glm::vec3(0.f, 0.f, -1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f), glm::vec2(0.f, 0.f)),
-        Vertex3DColor(glm::vec3(12.f, 3.f, 0.f), glm::vec3(0.f, 0.f, -1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f), glm::vec2(1.f, 1.f))};
+        Vertex3DColor(glm::vec3(-10.f, -3.f, 0.f), glm::vec3(0.f, 0.f, -1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f), glm::vec2(0.f, 0.f)),
+        Vertex3DColor(glm::vec3(10.f, -3.f, 0.f), glm::vec3(0.f, 0.f, -1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f), glm::vec2(1.f, 0.f)),
+        Vertex3DColor(glm::vec3(10.f, 3.f, 0.f), glm::vec3(0.f, 0.f, -1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f), glm::vec2(1.f, 1.f)),
+        Vertex3DColor(glm::vec3(-10.f, 3.f, 0.f), glm::vec3(0.f, 0.f, -1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f), glm::vec2(0.f, 1.f)),
+        Vertex3DColor(glm::vec3(-10.f, -3.f, 0.f), glm::vec3(0.f, 0.f, -1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f), glm::vec2(0.f, 0.f)),
+        Vertex3DColor(glm::vec3(10.f, 3.f, 0.f), glm::vec3(0.f, 0.f, -1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f), glm::vec2(1.f, 1.f))};
 
     // Initialisation des VBO et VAO pour chaque mur
     GLuint backWallVBO, backWallVAO;
@@ -593,20 +593,20 @@ int main(int /*argc*/, char **argv)
                 : drawRec2(floorVAO, MVMatrix, ProjMatrix, room2MVPMatrixLocation);
 
             /* Room 1 Back wall */
-            MVMatrix = glm::translate(ViewMatrix, glm::vec3(0, 0, 4)); // Position in front
+            MVMatrix = glm::translate(ViewMatrix, glm::vec3(0, 0, 4));
             (room1)
                 ? drawRec(backWallVBO, MVMatrix, ProjMatrix, room1MVPMatrixLocation, room1MVMatrixLocation, room1NormalMatrixLocation, woodTexture, room1TextureLocation)
                 : drawRec2(backWallVBO, MVMatrix, ProjMatrix, room2MVPMatrixLocation);
 
             /* Room 1 Left wall */
-            MVMatrix = glm::translate(ViewMatrix, glm::vec3(-12, 0, -8)); // Position in front
+            MVMatrix = glm::translate(ViewMatrix, glm::vec3(-12, 0, -6));
             MVMatrix = glm::rotate(MVMatrix, glm::radians(90.f), glm::vec3(0, 1, 0));
             (room1)
                 ? drawRec(leftWallVBO, MVMatrix, ProjMatrix, room1MVPMatrixLocation, room1MVMatrixLocation, room1NormalMatrixLocation, woodTexture, room1TextureLocation)
                 : drawRec2(leftWallVBO, MVMatrix, ProjMatrix, room2MVPMatrixLocation);
 
             /* Room 1 Right wall */
-            MVMatrix = glm::translate(ViewMatrix, glm::vec3(12, 0, -8)); // Position in front
+            MVMatrix = glm::translate(ViewMatrix, glm::vec3(12, 0, -6));
             MVMatrix = glm::rotate(MVMatrix, glm::radians(90.f), glm::vec3(0, 1, 0));
             (room1)
                 ? drawRec(rightWallVBO, MVMatrix, ProjMatrix, room1MVPMatrixLocation, room1MVMatrixLocation, room1NormalMatrixLocation, woodTexture, room1TextureLocation)
@@ -645,14 +645,14 @@ int main(int /*argc*/, char **argv)
                 : drawRec2(backWallVBO, MVMatrix, ProjMatrix, room2MVPMatrixLocation);
 
             /* Room 2 Left wall */
-            MVMatrix = glm::translate(ViewMatrix, glm::vec3(-12, 0, -26)); // Position in front
+            MVMatrix = glm::translate(ViewMatrix, glm::vec3(-12, 0, -28)); // Position in front
             MVMatrix = glm::rotate(MVMatrix, glm::radians(90.f), glm::vec3(0, 1, 0));
             (room1)
                 ? drawRec(leftWallVBO, MVMatrix, ProjMatrix, room1MVPMatrixLocation, room1MVMatrixLocation, room1NormalMatrixLocation, woodTexture, room1TextureLocation)
                 : drawRec2(leftWallVBO, MVMatrix, ProjMatrix, room2MVPMatrixLocation);
 
             /* Room 2 Right wall */
-            MVMatrix = glm::translate(ViewMatrix, glm::vec3(12, 0, -26)); // Position in front
+            MVMatrix = glm::translate(ViewMatrix, glm::vec3(12, 0, -28)); // Position in front
             MVMatrix = glm::rotate(MVMatrix, glm::radians(90.f), glm::vec3(0, 1, 0));
             (room1)
                 ? drawRec(rightWallVAO, MVMatrix, ProjMatrix, room1MVPMatrixLocation, room1MVMatrixLocation, room1NormalMatrixLocation, woodTexture, room1TextureLocation)
