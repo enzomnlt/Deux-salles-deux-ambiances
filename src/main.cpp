@@ -106,7 +106,7 @@ static void size_callback(GLFWwindow * /*window*/, int width, int height)
     window_height = height;
 }
 
-void createWallVBOandVAO(GLuint &vbo, GLuint &vao, const Vertex3DColor vertices[], GLsizeiptr size)
+void initRecVBOandVAO(GLuint &vbo, GLuint &vao, const Vertex3DColor vertices[], GLsizeiptr size)
 {
     glGenVertexArrays(1, &vao);
     glGenBuffers(1, &vbo);
@@ -126,12 +126,9 @@ void createWallVBOandVAO(GLuint &vbo, GLuint &vao, const Vertex3DColor vertices[
     glBindVertexArray(0);
 }
 
-void drawWall(GLuint vao, const glm::mat4 &MVMatrix, const glm::mat4 &ProjMatrix, GLint MVPMatrixLocation, GLint MVMatrixLocation, GLint NormalMatrixLocation)
+void drawRec(GLuint vao, const glm::mat4 &MVMatrix, const glm::mat4 &ProjMatrix, GLint MVPMatrixLocation)
 {
-    glm::mat4 NormalMatrix = glm::transpose(glm::inverse(MVMatrix));
     glUniformMatrix4fv(MVPMatrixLocation, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MVMatrix));
-    glUniformMatrix4fv(MVMatrixLocation, 1, GL_FALSE, glm::value_ptr(MVMatrix));
-    glUniformMatrix4fv(NormalMatrixLocation, 1, GL_FALSE, glm::value_ptr(NormalMatrix));
     glBindVertexArray(vao);
     glDrawArrays(GL_TRIANGLES, 0, 6);
     glBindVertexArray(0);
@@ -196,29 +193,20 @@ int main(int /*argc*/, char **argv)
         return -1;
     }
 
+    /* Load shaders */
+
     FilePath applicationPath(argv[0]);
 
     /* Skybox shaders */
     Program skyboxProgram = loadProgram(applicationPath.dirPath() + "../src/shaders/skybox.vs.glsl",
                                         applicationPath.dirPath() + "../src/shaders/skybox.fs.glsl");
 
-    /* 3d shaders */
-    Program sphereProgram = loadProgram(applicationPath.dirPath() + "../src/shaders/3D.vs.glsl",
-                                        applicationPath.dirPath() + "../src/shaders/normals.fs.glsl");
-    sphereProgram.use();
+    /* Room 2 Shaders */
+    Program room2Program = loadProgram(applicationPath.dirPath() + "../src/shaders/room2.vs.glsl",
+                                       applicationPath.dirPath() + "../src/shaders/room2.fs.glsl");
+    room2Program.use();
 
-    GLint sphereMVPMatrixLocation = glGetUniformLocation(sphereProgram.getGLId(), "uMVPMatrix");
-    GLint sphereMVMatrixLocation = glGetUniformLocation(sphereProgram.getGLId(), "uMVMatrix");
-    GLint sphereNormalMatrixLocation = glGetUniformLocation(sphereProgram.getGLId(), "uNormalMatrix");
-
-    /* Wall shaders */
-    Program squareProgram = loadProgram(applicationPath.dirPath() + "../src/shaders/3D.vs.glsl",
-                                        applicationPath.dirPath() + "../src/shaders/color.fs.glsl");
-    squareProgram.use();
-
-    GLint squareMVPMatrixLocation = glGetUniformLocation(squareProgram.getGLId(), "uMVPMatrix");
-    GLint squareMVMatrixLocation = glGetUniformLocation(squareProgram.getGLId(), "uMVMatrix");
-    GLint squareNormalMatrixLocation = glGetUniformLocation(squareProgram.getGLId(), "uNormalMatrix");
+    GLint room2MVPMatrixLocation = glGetUniformLocation(room2Program.getGLId(), "uMVPMatrix");
 
     glEnable(GL_DEPTH_TEST);
 
@@ -231,68 +219,6 @@ int main(int /*argc*/, char **argv)
     /***********************
      * INITIALIZATION CODE
      ***********************/
-
-    /**********
-     * SPHERE
-     **********/
-
-    Sphere sphere(1, 32, 16);
-
-    /* VBO */
-    GLuint vbo;
-    glGenBuffers(1, &vbo);
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferData(GL_ARRAY_BUFFER, sphere.getVertexCount() * sizeof(ShapeVertex), sphere.getDataPointer(), GL_STATIC_DRAW);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-    /* VAO */
-    GLuint vao;
-    glGenVertexArrays(1, &vao);
-
-    glBindVertexArray(vao);
-
-    glEnableVertexAttribArray(VERTEX_ATTR_POSITION);
-    glEnableVertexAttribArray(VERTEX_ATTR_NORMAL);
-
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);
-
-    glVertexAttribPointer(VERTEX_ATTR_POSITION, 3, GL_FLOAT, GL_FALSE, sizeof(ShapeVertex), (const GLvoid *)offsetof(ShapeVertex, position));
-    glVertexAttribPointer(VERTEX_ATTR_NORMAL, 3, GL_FLOAT, GL_FALSE, sizeof(ShapeVertex), (const GLvoid *)offsetof(ShapeVertex, normal));
-
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-    glBindVertexArray(0);
-
-    /**********
-     * Cone
-     **********/
-
-    Cone cone(2, 1, 32, 16);
-
-    /* VBO */
-    GLuint conevbo;
-    glGenBuffers(1, &conevbo);
-    glBindBuffer(GL_ARRAY_BUFFER, conevbo);
-    glBufferData(GL_ARRAY_BUFFER, cone.getVertexCount() * sizeof(ShapeVertex), cone.getDataPointer(), GL_STATIC_DRAW);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-    /* VAO */
-    GLuint conevao;
-    glGenVertexArrays(1, &conevao);
-
-    glBindVertexArray(conevao);
-
-    glEnableVertexAttribArray(VERTEX_ATTR_POSITION);
-    glEnableVertexAttribArray(VERTEX_ATTR_NORMAL);
-
-    glBindBuffer(GL_ARRAY_BUFFER, conevbo);
-
-    glVertexAttribPointer(VERTEX_ATTR_POSITION, 3, GL_FLOAT, GL_FALSE, sizeof(ShapeVertex), (const GLvoid *)offsetof(ShapeVertex, position));
-    glVertexAttribPointer(VERTEX_ATTR_NORMAL, 3, GL_FLOAT, GL_FALSE, sizeof(ShapeVertex), (const GLvoid *)offsetof(ShapeVertex, normal));
-
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-    glBindVertexArray(0);
 
     /*********
      * FLOOR
@@ -308,7 +234,7 @@ int main(int /*argc*/, char **argv)
 
     /* VBO & VAO */
     GLuint floorVBO, floorVAO;
-    createWallVBOandVAO(floorVBO, floorVAO, floorVertices, sizeof(floorVertices));
+    initRecVBOandVAO(floorVBO, floorVAO, floorVertices, sizeof(floorVertices));
 
     /********
      * WALLS
@@ -324,7 +250,7 @@ int main(int /*argc*/, char **argv)
 
     /* VBO & VAO */
     GLuint wallVBO, wallVAO;
-    createWallVBOandVAO(wallVBO, wallVAO, wallVertices, sizeof(wallVertices));
+    initRecVBOandVAO(wallVBO, wallVAO, wallVertices, sizeof(wallVertices));
 
     /**************
      * SMALL WALLS
@@ -339,7 +265,7 @@ int main(int /*argc*/, char **argv)
 
     /* VBO & VAO */
     GLuint smallWallVBO, smallWallVAO;
-    createWallVBOandVAO(smallWallVBO, smallWallVAO, smallWallVertices, sizeof(smallWallVertices));
+    initRecVBOandVAO(smallWallVBO, smallWallVAO, smallWallVertices, sizeof(smallWallVertices));
 
     /****************
      * PASSAGE WALLS
@@ -355,7 +281,7 @@ int main(int /*argc*/, char **argv)
 
     /* VBO & VAO */
     GLuint passageWallVBO, passageWallVAO;
-    createWallVBOandVAO(passageWallVBO, passageWallVAO, passageWallVertices, sizeof(passageWallVertices));
+    initRecVBOandVAO(passageWallVBO, passageWallVAO, passageWallVertices, sizeof(passageWallVertices));
 
     /*********
      * WINDOW
@@ -371,7 +297,7 @@ int main(int /*argc*/, char **argv)
 
     /* VBO & VAO */
     GLuint windowVBO, windowVAO;
-    createWallVBOandVAO(windowVBO, windowVAO, windowVertices, sizeof(windowVertices));
+    initRecVBOandVAO(windowVBO, windowVAO, windowVertices, sizeof(windowVertices));
 
     /***********
      * PEDESTAL
@@ -398,26 +324,28 @@ int main(int /*argc*/, char **argv)
     };
 
     GLuint pedestalVBO, pedestalVAO, pedestalEBO;
-    glGenVertexArrays(1, &pedestalVAO);
-    glGenBuffers(1, &pedestalVBO);
-    glGenBuffers(1, &pedestalEBO);
+    {
+        glGenVertexArrays(1, &pedestalVAO);
+        glGenBuffers(1, &pedestalVBO);
+        glGenBuffers(1, &pedestalEBO);
 
-    glBindVertexArray(pedestalVAO);
+        glBindVertexArray(pedestalVAO);
 
-    glBindBuffer(GL_ARRAY_BUFFER, pedestalVBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(pedestalVertices), pedestalVertices, GL_STATIC_DRAW);
+        glBindBuffer(GL_ARRAY_BUFFER, pedestalVBO);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(pedestalVertices), pedestalVertices, GL_STATIC_DRAW);
 
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, pedestalEBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(pedestalIndices), pedestalIndices, GL_STATIC_DRAW);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, pedestalEBO);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(pedestalIndices), pedestalIndices, GL_STATIC_DRAW);
 
-    glEnableVertexAttribArray(VERTEX_ATTR_POSITION);
-    glVertexAttribPointer(VERTEX_ATTR_POSITION, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex3DColor), (const GLvoid *)offsetof(Vertex3DColor, position));
+        glEnableVertexAttribArray(VERTEX_ATTR_POSITION);
+        glVertexAttribPointer(VERTEX_ATTR_POSITION, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex3DColor), (const GLvoid *)offsetof(Vertex3DColor, position));
 
-    glEnableVertexAttribArray(VERTEX_ATTR_COLOR);
-    glVertexAttribPointer(VERTEX_ATTR_COLOR, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex3DColor), (const GLvoid *)offsetof(Vertex3DColor, color));
+        glEnableVertexAttribArray(VERTEX_ATTR_COLOR);
+        glVertexAttribPointer(VERTEX_ATTR_COLOR, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex3DColor), (const GLvoid *)offsetof(Vertex3DColor, color));
 
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindVertexArray(0);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        glBindVertexArray(0);
+    }
 
     /**********
      * SKYBOX
@@ -479,14 +407,16 @@ int main(int /*argc*/, char **argv)
 
     // Skybox VAO and VBO
     GLuint skyboxVAO, skyboxVBO;
-    glGenVertexArrays(1, &skyboxVAO);
-    glGenBuffers(1, &skyboxVBO);
-    glBindVertexArray(skyboxVAO);
-    glBindBuffer(GL_ARRAY_BUFFER, skyboxVBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(skyboxVertices), &skyboxVertices, GL_STATIC_DRAW);
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0);
-    glBindVertexArray(0);
+    {
+        glGenVertexArrays(1, &skyboxVAO);
+        glGenBuffers(1, &skyboxVBO);
+        glBindVertexArray(skyboxVAO);
+        glBindBuffer(GL_ARRAY_BUFFER, skyboxVBO);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(skyboxVertices), &skyboxVertices, GL_STATIC_DRAW);
+        glEnableVertexAttribArray(0);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0);
+        glBindVertexArray(0);
+    }
 
     while (!glfwWindowShouldClose(window))
     {
@@ -517,147 +447,113 @@ int main(int /*argc*/, char **argv)
             glDepthFunc(GL_LESS);
         }
 
-        {
-            // Sphere
-            sphereProgram.use();
-            glBindVertexArray(vao);
-
-            MVMatrix = glm::translate(ViewMatrix, glm::vec3(0, 0, -5));
-            MVMatrix = glm::rotate(MVMatrix, (float)glfwGetTime() * 0.5f, glm::vec3(0, 1, 0)); // Translation * Rotation
-            glUniformMatrix4fv(sphereMVPMatrixLocation, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MVMatrix));
-            glUniformMatrix4fv(sphereMVMatrixLocation, 1, GL_FALSE, glm::value_ptr(MVMatrix));
-            glUniformMatrix4fv(sphereNormalMatrixLocation, 1, GL_FALSE, glm::value_ptr(NormalMatrix));
-            glDrawArrays(GL_TRIANGLES, 0, sphere.getVertexCount());
-            glBindVertexArray(0);
-
-            // Cone
-            sphereProgram.use();
-            glBindVertexArray(conevao);
-
-            MVMatrix = glm::translate(ViewMatrix, glm::vec3(0, -2, -7));
-            MVMatrix = glm::rotate(MVMatrix, (float)glfwGetTime() * 0.5f, glm::vec3(0, 1, 0)); // Translation * Rotation
-            glUniformMatrix4fv(sphereMVPMatrixLocation, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MVMatrix));
-            glUniformMatrix4fv(sphereMVMatrixLocation, 1, GL_FALSE, glm::value_ptr(MVMatrix));
-            glUniformMatrix4fv(sphereNormalMatrixLocation, 1, GL_FALSE, glm::value_ptr(NormalMatrix));
-            glDrawArrays(GL_TRIANGLES, 0, cone.getVertexCount());
-            glBindVertexArray(0);
-
-            // Cone
-            sphereProgram.use();
-            glBindVertexArray(conevao);
-
-            MVMatrix = glm::translate(ViewMatrix, glm::vec3(0, 1, -7));
-            MVMatrix = glm::rotate(MVMatrix, glm::radians(180.f), glm::vec3(1, 0, 0));
-            MVMatrix = glm::rotate(MVMatrix, (float)glfwGetTime() * -0.5f, glm::vec3(0, 1, 0)); // Translation * Rotation
-            glUniformMatrix4fv(sphereMVPMatrixLocation, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MVMatrix));
-            glUniformMatrix4fv(sphereMVMatrixLocation, 1, GL_FALSE, glm::value_ptr(MVMatrix));
-            glUniformMatrix4fv(sphereNormalMatrixLocation, 1, GL_FALSE, glm::value_ptr(NormalMatrix));
-            glDrawArrays(GL_TRIANGLES, 0, cone.getVertexCount());
-            glBindVertexArray(0);
-        }
-
         /*****************
          * SCENE GEOMETRY
          *****************/
+        room2Program.use();
+
         {
             /* Floor */
-            squareProgram.use();
             MVMatrix = glm::translate(ViewMatrix, glm::vec3(0, -3, -17));
             MVMatrix = glm::rotate(MVMatrix, glm::radians(90.f), glm::vec3(1, 0, 0));
-            drawWall(floorVAO, MVMatrix, ProjMatrix, squareMVPMatrixLocation, squareMVMatrixLocation, squareNormalMatrixLocation);
+            drawRec(floorVAO, MVMatrix, ProjMatrix, room2MVPMatrixLocation);
 
             /* Room 1 Back wall */
             MVMatrix = glm::translate(ViewMatrix, glm::vec3(0, 0, 4)); // Position in front
-            drawWall(wallVAO, MVMatrix, ProjMatrix, squareMVPMatrixLocation, squareMVMatrixLocation, squareNormalMatrixLocation);
+            drawRec(wallVAO, MVMatrix, ProjMatrix, room2MVPMatrixLocation);
 
             /* Room 1 Left wall */
             MVMatrix = glm::translate(ViewMatrix, glm::vec3(-12, 0, -8)); // Position in front
             MVMatrix = glm::rotate(MVMatrix, glm::radians(90.f), glm::vec3(0, 1, 0));
-            drawWall(wallVAO, MVMatrix, ProjMatrix, squareMVPMatrixLocation, squareMVMatrixLocation, squareNormalMatrixLocation);
+            drawRec(wallVAO, MVMatrix, ProjMatrix, room2MVPMatrixLocation);
 
             /* Room 1 Right wall */
             MVMatrix = glm::translate(ViewMatrix, glm::vec3(12, 0, -8)); // Position in front
             MVMatrix = glm::rotate(MVMatrix, glm::radians(90.f), glm::vec3(0, 1, 0));
-            drawWall(wallVAO, MVMatrix, ProjMatrix, squareMVPMatrixLocation, squareMVMatrixLocation, squareNormalMatrixLocation);
+            drawRec(wallVAO, MVMatrix, ProjMatrix, room2MVPMatrixLocation);
 
             /* Room 1 Small left wall */
             glBindVertexArray(smallWallVAO);
             MVMatrix = glm::translate(ViewMatrix, glm::vec3(-7, 0, -16));
-            drawWall(smallWallVAO, MVMatrix, ProjMatrix, squareMVPMatrixLocation, squareMVMatrixLocation, squareNormalMatrixLocation);
+            drawRec(smallWallVAO, MVMatrix, ProjMatrix, room2MVPMatrixLocation);
 
             /* Room 1 Small right wall */
             MVMatrix = glm::translate(ViewMatrix, glm::vec3(7, 0, -16));
-            drawWall(smallWallVAO, MVMatrix, ProjMatrix, squareMVPMatrixLocation, squareMVMatrixLocation, squareNormalMatrixLocation);
+            drawRec(smallWallVAO, MVMatrix, ProjMatrix, room2MVPMatrixLocation);
 
             /* Passage walls */
             MVMatrix = glm::translate(ViewMatrix, glm::vec3(-2, 0, -17));
             MVMatrix = glm::rotate(MVMatrix, glm::radians(90.f), glm::vec3(0, 1, 0));
-            drawWall(passageWallVAO, MVMatrix, ProjMatrix, squareMVPMatrixLocation, squareMVMatrixLocation, squareNormalMatrixLocation);
+            drawRec(passageWallVAO, MVMatrix, ProjMatrix, room2MVPMatrixLocation);
 
             MVMatrix = glm::translate(ViewMatrix, glm::vec3(2, 0, -17));
             MVMatrix = glm::rotate(MVMatrix, glm::radians(90.f), glm::vec3(0, 1, 0));
-            drawWall(passageWallVAO, MVMatrix, ProjMatrix, squareMVPMatrixLocation, squareMVMatrixLocation, squareNormalMatrixLocation);
+            drawRec(passageWallVAO, MVMatrix, ProjMatrix, room2MVPMatrixLocation);
 
             /* Room 2 back wall */
             MVMatrix = glm::translate(ViewMatrix, glm::vec3(0, 0, -38)); // Position in front
-            drawWall(wallVAO, MVMatrix, ProjMatrix, squareMVPMatrixLocation, squareMVMatrixLocation, squareNormalMatrixLocation);
+            drawRec(wallVAO, MVMatrix, ProjMatrix, room2MVPMatrixLocation);
 
             /* Room 2 Left wall */
             MVMatrix = glm::translate(ViewMatrix, glm::vec3(-12, 0, -26)); // Position in front
             MVMatrix = glm::rotate(MVMatrix, glm::radians(90.f), glm::vec3(0, 1, 0));
-            drawWall(wallVAO, MVMatrix, ProjMatrix, squareMVPMatrixLocation, squareMVMatrixLocation, squareNormalMatrixLocation);
+            drawRec(wallVAO, MVMatrix, ProjMatrix, room2MVPMatrixLocation);
 
             /* Room 2 Right wall */
             MVMatrix = glm::translate(ViewMatrix, glm::vec3(12, 0, -26)); // Position in front
             MVMatrix = glm::rotate(MVMatrix, glm::radians(90.f), glm::vec3(0, 1, 0));
-            drawWall(wallVAO, MVMatrix, ProjMatrix, squareMVPMatrixLocation, squareMVMatrixLocation, squareNormalMatrixLocation);
+            drawRec(wallVAO, MVMatrix, ProjMatrix, room2MVPMatrixLocation);
 
             /* Room 2 Small left wall */
             MVMatrix = glm::translate(ViewMatrix, glm::vec3(-7, 0, -18));
-            drawWall(smallWallVAO, MVMatrix, ProjMatrix, squareMVPMatrixLocation, squareMVMatrixLocation, squareNormalMatrixLocation);
+            drawRec(smallWallVAO, MVMatrix, ProjMatrix, room2MVPMatrixLocation);
 
             /* Room 2 Small right wall */
             MVMatrix = glm::translate(ViewMatrix, glm::vec3(7, 0, -18));
-            drawWall(smallWallVAO, MVMatrix, ProjMatrix, squareMVPMatrixLocation, squareMVMatrixLocation, squareNormalMatrixLocation);
+            drawRec(smallWallVAO, MVMatrix, ProjMatrix, room2MVPMatrixLocation);
         }
 
-        // Pedestal
-        MVMatrix = glm::translate(ViewMatrix, glm::vec3(0, -1.75f, -24.75));
-        glBindVertexArray(pedestalVAO);
-        glUniformMatrix4fv(squareMVPMatrixLocation, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MVMatrix));
-        glUniformMatrix4fv(squareMVMatrixLocation, 1, GL_FALSE, glm::value_ptr(MVMatrix));
-        glUniformMatrix4fv(squareNormalMatrixLocation, 1, GL_FALSE, glm::value_ptr(NormalMatrix));
-        glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
-        glBindVertexArray(0);
+        /*****************
+         * ROOM 2 OBJECTS
+         *****************/
 
-        // Windows
-        std::vector<TransparentObject> transparentObjects = {
-            {windowVAO, glm::vec3(0, 0, -24), glm::translate(ViewMatrix, glm::vec3(0, 0, -24))},
-            {windowVAO, glm::vec3(0, 0, -25.5), glm::translate(ViewMatrix, glm::vec3(0, 0, -25.5))},
-            {windowVAO, glm::vec3(-0.75f, 0, -24.75f), glm::rotate(glm::translate(ViewMatrix, glm::vec3(-0.75f, 0, -24.75f)), glm::radians(90.f), glm::vec3(0, 1, 0))},
-            {windowVAO, glm::vec3(0.75f, 0, -24.75f), glm::rotate(glm::translate(ViewMatrix, glm::vec3(0.75f, 0, -24.75f)), glm::radians(90.f), glm::vec3(0, 1, 0))}};
-
-        glm::vec3 cameraPosition = camera.getPosition();
-
-        std::sort(transparentObjects.begin(), transparentObjects.end(), [&cameraPosition](const TransparentObject &a, const TransparentObject &b)
-                  { return calculateDistance(cameraPosition, a.position) > calculateDistance(cameraPosition, b.position); });
-
-        glEnable(GL_BLEND);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-        for (const auto &obj : transparentObjects)
         {
-            drawWall(obj.vao, obj.modelMatrix, ProjMatrix, squareMVPMatrixLocation, squareMVMatrixLocation, squareNormalMatrixLocation);
+            /* Pedestal */
+            MVMatrix = glm::translate(ViewMatrix, glm::vec3(0, -1.75f, -24.75));
+            glBindVertexArray(pedestalVAO);
+            glUniformMatrix4fv(room2MVPMatrixLocation, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MVMatrix));
+            glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
+            glBindVertexArray(0);
+
+            /* Windows */
+            std::vector<TransparentObject> transparentObjects = {
+                {windowVAO, glm::vec3(0, 0, -24), glm::translate(ViewMatrix, glm::vec3(0, 0, -24))},
+                {windowVAO, glm::vec3(0, 0, -25.5), glm::translate(ViewMatrix, glm::vec3(0, 0, -25.5))},
+                {windowVAO, glm::vec3(-0.75f, 0, -24.75f), glm::rotate(glm::translate(ViewMatrix, glm::vec3(-0.75f, 0, -24.75f)), glm::radians(90.f), glm::vec3(0, 1, 0))},
+                {windowVAO, glm::vec3(0.75f, 0, -24.75f), glm::rotate(glm::translate(ViewMatrix, glm::vec3(0.75f, 0, -24.75f)), glm::radians(90.f), glm::vec3(0, 1, 0))}};
+
+            glm::vec3 cameraPosition = camera.getPosition();
+
+            std::sort(transparentObjects.begin(), transparentObjects.end(), [&cameraPosition](const TransparentObject &a, const TransparentObject &b)
+                      { return calculateDistance(cameraPosition, a.position) > calculateDistance(cameraPosition, b.position); });
+
+            glEnable(GL_BLEND);
+            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+            for (const auto &obj : transparentObjects)
+            {
+                drawRec(obj.vao, obj.modelMatrix, ProjMatrix, room2MVPMatrixLocation);
+            }
+            glDisable(GL_BLEND);
         }
-        glDisable(GL_BLEND);
 
         /* Swap front and back buffers */
         glfwSwapBuffers(window);
         /* Poll for and process events */
         glfwPollEvents();
     }
-    glDeleteBuffers(1, &vbo);
-    glDeleteVertexArrays(1, &vao);
+    // glDeleteBuffers(1, &vbo);
+    // glDeleteVertexArrays(1, &vao);
 
     glDeleteBuffers(1, &floorVBO);
     glDeleteVertexArrays(1, &floorVAO);
