@@ -61,8 +61,13 @@ struct TransparentObject
     glm::mat4 modelMatrix;
 };
 
-static void key_callback(GLFWwindow * /*window*/, int key, int /*scancode*/, int action, int /*mods*/)
+static void key_callback(GLFWwindow *window, int key, int /*scancode*/, int action, int /*mods*/)
 {
+    /* Close window if Q key is pressed */
+    if (action == GLFW_PRESS && key == GLFW_KEY_Q)
+    {
+        glfwSetWindowShouldClose(window, GLFW_TRUE);
+    }
     // Movement
     if ((action == GLFW_PRESS || action == GLFW_REPEAT) && key == GLFW_KEY_W)
     {
@@ -211,6 +216,19 @@ void drawCone(Cone cone, GLuint texture, GLuint vao, glm::mat4 ViewMatrix, glm::
     glBindVertexArray(0);
 
     glBindTexture(GL_TEXTURE_2D, 0);
+}
+
+void drawCone2(Cone cone, GLuint vao, const glm::mat4 &MVMatrix, glm::mat4 ProjMatrix, GLint MVPMatrixLocation, GLint isConeLocation)
+{
+    glUniformMatrix4fv(MVPMatrixLocation, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MVMatrix));
+    // color cone in white :
+    glUniform1i(isConeLocation, GL_TRUE);
+
+    glBindVertexArray(vao);
+    glDrawArrays(GL_TRIANGLES, 0, cone.getVertexCount());
+    glBindVertexArray(0);
+
+    glUniform1i(isConeLocation, GL_FALSE);
 }
 
 void drawBalloon(Sphere sphere, GLuint vao, GLuint texture, glm::mat4 ViewMatrix, glm::mat4 ProjMatrix, GLint MVPMatrixLocation, GLint MVMatrixLocation, GLint NormalMatrixLocation, GLint textureLocation)
@@ -371,6 +389,7 @@ int main(int /*argc*/, char **argv)
     room2Program.use();
 
     GLint room2MVPMatrixLocation = glGetUniformLocation(room2Program.getGLId(), "uMVPMatrix");
+    GLint isConeLocation = glGetUniformLocation(room2Program.getGLId(), "isCone");
 
     glEnable(GL_DEPTH_TEST);
 
@@ -923,19 +942,65 @@ int main(int /*argc*/, char **argv)
          *****************/
 
         {
+
+            /* Spikeball */
+            {
+                glBindVertexArray(sphereVAO);
+                MVMatrix = glm::translate(ViewMatrix, glm::vec3(7, -1, -32));
+                MVMatrix = glm::scale(MVMatrix, glm::vec3(1.05f, 1.05f, 1.05f));
+                glUniformMatrix4fv(room2MVPMatrixLocation, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MVMatrix));
+                glDrawArrays(GL_TRIANGLES, 0, sphere.getVertexCount());
+                glBindVertexArray(0);
+
+                MVMatrix = glm::translate(ViewMatrix, glm::vec3(7, 0, -32));
+                MVMatrix = glm::scale(MVMatrix, glm::vec3(0.2f, 0.2f, 0.2f));
+                drawCone2(cone, conevao, MVMatrix, ProjMatrix, room1MVPMatrixLocation, isConeLocation);
+
+                MVMatrix = glm::translate(ViewMatrix, glm::vec3(7, -2, -32));
+                MVMatrix = glm::rotate(MVMatrix, glm::radians(180.f), glm::vec3(1, 0, 0));
+                MVMatrix = glm::scale(MVMatrix, glm::vec3(0.2f, 0.2f, 0.2f));
+                drawCone2(cone, conevao, MVMatrix, ProjMatrix, room1MVPMatrixLocation, isConeLocation);
+
+                MVMatrix = glm::translate(ViewMatrix, glm::vec3(6, -1, -32));
+                MVMatrix = glm::rotate(MVMatrix, glm::radians(90.f), glm::vec3(0, 0, 1));
+                MVMatrix = glm::scale(MVMatrix, glm::vec3(0.2f, 0.2f, 0.2f));
+                drawCone2(cone, conevao, MVMatrix, ProjMatrix, room1MVPMatrixLocation, isConeLocation);
+
+                MVMatrix = glm::translate(ViewMatrix, glm::vec3(8, -1, -32));
+                MVMatrix = glm::rotate(MVMatrix, glm::radians(90.f), glm::vec3(0, 0, -1));
+                MVMatrix = glm::scale(MVMatrix, glm::vec3(0.2f, 0.2f, 0.2f));
+                drawCone2(cone, conevao, MVMatrix, ProjMatrix, room1MVPMatrixLocation, isConeLocation);
+
+                MVMatrix = glm::translate(ViewMatrix, glm::vec3(7, -1, -31));
+                MVMatrix = glm::rotate(MVMatrix, glm::radians(90.f), glm::vec3(1, 0, 0));
+                MVMatrix = glm::scale(MVMatrix, glm::vec3(0.2f, 0.2f, 0.2f));
+                drawCone2(cone, conevao, MVMatrix, ProjMatrix, room1MVPMatrixLocation, isConeLocation);
+
+                MVMatrix = glm::translate(ViewMatrix, glm::vec3(7, -1, -33));
+                MVMatrix = glm::rotate(MVMatrix, glm::radians(90.f), glm::vec3(-1, 0, 0));
+                MVMatrix = glm::scale(MVMatrix, glm::vec3(0.2f, 0.2f, 0.2f));
+                drawCone2(cone, conevao, MVMatrix, ProjMatrix, room1MVPMatrixLocation, isConeLocation);
+            }
+
             /* Pedestal */
-            MVMatrix = glm::translate(ViewMatrix, glm::vec3(0, -1.75f, -24.75));
-            glBindVertexArray(pedestalVAO);
-            glUniformMatrix4fv(room2MVPMatrixLocation, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MVMatrix));
-            glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
-            glBindVertexArray(0);
+            {
+                MVMatrix = glm::translate(ViewMatrix, glm::vec3(-6.f, -1.75f, -24.75));
+                glBindVertexArray(pedestalVAO);
+                glUniformMatrix4fv(room2MVPMatrixLocation, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MVMatrix));
+                glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
+                glBindVertexArray(0);
+
+                MVMatrix = glm::translate(ViewMatrix, glm::vec3(-6.f, -0.5f, -24.75));
+                MVMatrix = glm::scale(MVMatrix, glm::vec3(0.2f, 0.2f, 0.2f));
+                drawCone2(cone, conevao, MVMatrix, ProjMatrix, room1MVPMatrixLocation, isConeLocation);
+            }
 
             /* Windows */
             std::vector<TransparentObject> transparentObjects = {
-                {windowVAO, glm::vec3(0, 0, -24), glm::translate(ViewMatrix, glm::vec3(0, 0, -24))},
-                {windowVAO, glm::vec3(0, 0, -25.5), glm::translate(ViewMatrix, glm::vec3(0, 0, -25.5))},
-                {windowVAO, glm::vec3(-0.75f, 0, -24.75f), glm::rotate(glm::translate(ViewMatrix, glm::vec3(-0.75f, 0, -24.75f)), glm::radians(90.f), glm::vec3(0, 1, 0))},
-                {windowVAO, glm::vec3(0.75f, 0, -24.75f), glm::rotate(glm::translate(ViewMatrix, glm::vec3(0.75f, 0, -24.75f)), glm::radians(90.f), glm::vec3(0, 1, 0))}};
+                {windowVAO, glm::vec3(-6, 0, -24), glm::translate(ViewMatrix, glm::vec3(-6, 0, -24))},
+                {windowVAO, glm::vec3(-6, 0, -25.5), glm::translate(ViewMatrix, glm::vec3(-6, 0, -25.5))},
+                {windowVAO, glm::vec3(-6.75f, 0, -24.75f), glm::rotate(glm::translate(ViewMatrix, glm::vec3(-6.75f, 0, -24.75f)), glm::radians(90.f), glm::vec3(0, 1, 0))},
+                {windowVAO, glm::vec3(-5.25f, 0, -24.75f), glm::rotate(glm::translate(ViewMatrix, glm::vec3(-5.25f, 0, -24.75f)), glm::radians(90.f), glm::vec3(0, 1, 0))}};
 
             glm::vec3 cameraPosition = camera.getPosition();
 
