@@ -20,14 +20,26 @@ int window_height = 800;
 const GLuint VERTEX_ATTR_POSITION = 0;
 const GLuint VERTEX_ATTR_NORMAL = 1;
 const GLuint VERTEX_ATTR_COLOR = 2;
+const GLuint VERTEX_ATTR_TEXTURE = 3;
 
+/* Camera */
 bool move = false;
 float cameraHeight = 0.f;
 FreeflyCamera camera;
 
+/* Fil de fer */
 bool line = false;
 
+/* Current room */
 bool room1 = true;
+
+/* Light state */
+bool light = true;
+
+/* Balloon animation */
+bool animateBalloon = true;
+float balloonTimeOffset = 0.0f;
+float lastTime = 0.0f;
 
 struct Vertex3DColor
 {
@@ -75,6 +87,24 @@ static void key_callback(GLFWwindow * /*window*/, int key, int /*scancode*/, int
     {
         (line) ? glPolygonMode(GL_FRONT_AND_BACK, GL_FILL) : glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
         line = !line;
+    }
+    // Room light 1
+    if (action == GLFW_PRESS && key == GLFW_KEY_R)
+    {
+        light = !light;
+    }
+    // Balloon animation
+    if (action == GLFW_PRESS && key == GLFW_KEY_B)
+    {
+        if (animateBalloon)
+        {
+            lastTime = glfwGetTime();
+        }
+        else
+        {
+            balloonTimeOffset += glfwGetTime() - lastTime;
+        }
+        animateBalloon = !animateBalloon;
     }
 }
 
@@ -130,8 +160,8 @@ void initRecVBOandVAO(GLuint &vbo, GLuint &vao, const Vertex3DColor vertices[], 
     glEnableVertexAttribArray(VERTEX_ATTR_COLOR);
     glVertexAttribPointer(VERTEX_ATTR_COLOR, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex3DColor), (const GLvoid *)offsetof(Vertex3DColor, color));
 
-    glEnableVertexAttribArray(3);
-    glVertexAttribPointer(3, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex3DColor), (const GLvoid *)offsetof(Vertex3DColor, texCoords));
+    glEnableVertexAttribArray(VERTEX_ATTR_TEXTURE);
+    glVertexAttribPointer(VERTEX_ATTR_TEXTURE, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex3DColor), (const GLvoid *)offsetof(Vertex3DColor, texCoords));
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
@@ -160,6 +190,62 @@ void drawRec2(GLuint vao, const glm::mat4 &MVMatrix, const glm::mat4 &ProjMatrix
     glBindVertexArray(vao);
     glDrawArrays(GL_TRIANGLES, 0, 6);
     glBindVertexArray(0);
+}
+
+void drawCone(Cone cone, GLuint texture, GLuint vao, glm::mat4 ViewMatrix, glm::mat4 ProjMatrix, glm::vec3 translateVec, glm::vec3 scaleVec, GLint textureLocation, GLint MVPMatrixLocation, GLint MVMatrixLocation, GLint NormalMatrixLocation)
+{
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, texture);
+    glUniform1i(textureLocation, 0);
+
+    glBindVertexArray(vao);
+
+    glm::mat4 MVMatrix = glm::translate(ViewMatrix, translateVec);
+    glm::mat4 NormalMatrix = glm::transpose(glm::inverse(MVMatrix));
+    MVMatrix = glm::scale(MVMatrix, scaleVec);
+
+    glUniformMatrix4fv(MVPMatrixLocation, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MVMatrix));
+    glUniformMatrix4fv(MVMatrixLocation, 1, GL_FALSE, glm::value_ptr(MVMatrix));
+    glUniformMatrix4fv(NormalMatrixLocation, 1, GL_FALSE, glm::value_ptr(NormalMatrix));
+    glDrawArrays(GL_TRIANGLES, 0, cone.getVertexCount());
+    glBindVertexArray(0);
+
+    glBindTexture(GL_TEXTURE_2D, 0);
+}
+
+void drawBalloon(Sphere sphere, GLuint vao, GLuint texture, glm::mat4 ViewMatrix, glm::mat4 ProjMatrix, GLint MVPMatrixLocation, GLint MVMatrixLocation, GLint NormalMatrixLocation, GLint textureLocation)
+{
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, texture);
+    glUniform1i(textureLocation, 0);
+
+    glBindVertexArray(vao);
+
+    float currentTime = glfwGetTime();
+    float timeOffset = animateBalloon ? currentTime - balloonTimeOffset : lastTime - balloonTimeOffset;
+
+    float angle = timeOffset * 0.5f;
+    float x = 8.0f * cos(angle);
+    float z = -5.0f + 8.0f * sin(angle);
+    float y = -1.6f + 1.0f * sin(10 * angle);
+
+    glm::mat4 MVMatrix = glm::translate(ViewMatrix, glm::vec3(x, y, z));
+
+    float directionAngle = atan2(8.0f * sin(angle), 8.0f * cos(angle));
+    MVMatrix = glm::rotate(MVMatrix, -directionAngle, glm::vec3(0.f, 1.f, 0.f));
+
+    MVMatrix = glm::rotate(MVMatrix, (float)timeOffset * 4, glm::vec3(1.f, 0.f, 0.f));
+
+    MVMatrix = glm::scale(MVMatrix, glm::vec3(0.5f, 0.5f, 0.5f));
+    glm::mat4 NormalMatrix = glm::transpose(glm::inverse(MVMatrix));
+
+    glUniformMatrix4fv(MVPMatrixLocation, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MVMatrix));
+    glUniformMatrix4fv(MVMatrixLocation, 1, GL_FALSE, glm::value_ptr(MVMatrix));
+    glUniformMatrix4fv(NormalMatrixLocation, 1, GL_FALSE, glm::value_ptr(NormalMatrix));
+    glDrawArrays(GL_TRIANGLES, 0, sphere.getVertexCount());
+    glBindVertexArray(0);
+
+    glBindTexture(GL_TEXTURE_2D, 0);
 }
 
 float calculateDistance(const glm::vec3 &cameraPosition, const glm::vec3 &objectPosition)
@@ -240,19 +326,44 @@ int main(int /*argc*/, char **argv)
 
     // Load images
     std::unique_ptr<Image> wood = loadImage("../assets/textures/wood.png");
+    std::unique_ptr<Image> tree = loadImage("../assets/textures/tree.png");
+    std::unique_ptr<Image> ball = loadImage("../assets/textures/ball.png");
 
-    if (wood == nullptr)
+    if (wood == nullptr || tree == nullptr || ball == nullptr)
     {
         return -1;
     }
 
+    // Load texture
     GLuint woodTexture;
-    glGenTextures(1, &woodTexture);
-    glBindTexture(GL_TEXTURE_2D, woodTexture);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, wood->getWidth(), wood->getHeight(), 0, GL_RGBA, GL_FLOAT, wood->getPixels());
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glBindTexture(GL_TEXTURE_2D, 0);
+    {
+        glGenTextures(1, &woodTexture);
+        glBindTexture(GL_TEXTURE_2D, woodTexture);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, wood->getWidth(), wood->getHeight(), 0, GL_RGBA, GL_FLOAT, wood->getPixels());
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glBindTexture(GL_TEXTURE_2D, 0);
+    }
+
+    GLuint treeTexture;
+    {
+        glGenTextures(1, &treeTexture);
+        glBindTexture(GL_TEXTURE_2D, treeTexture);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, tree->getWidth(), tree->getHeight(), 0, GL_RGBA, GL_FLOAT, tree->getPixels());
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glBindTexture(GL_TEXTURE_2D, 0);
+    }
+
+    GLuint ballTexture;
+    {
+        glGenTextures(1, &ballTexture);
+        glBindTexture(GL_TEXTURE_2D, ballTexture);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, ball->getWidth(), ball->getHeight(), 0, GL_RGBA, GL_FLOAT, ball->getPixels());
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glBindTexture(GL_TEXTURE_2D, 0);
+    }
 
     /* Room 2 Shaders */
     Program room2Program = loadProgram(applicationPath.dirPath() + "../src/shaders/room2.vs.glsl",
@@ -320,19 +431,7 @@ int main(int /*argc*/, char **argv)
         Vertex3DColor(glm::vec3(-10.f, -3.f, 0.f), glm::vec3(0.f, 0.f, -1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f), glm::vec2(0.f, 0.f)),
         Vertex3DColor(glm::vec3(10.f, 3.f, 0.f), glm::vec3(0.f, 0.f, -1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f), glm::vec2(1.f, 1.f))};
 
-    // Initialisation des VBO et VAO pour chaque mur
-    GLuint backWallVBO, backWallVAO;
-    initRecVBOandVAO(backWallVBO, backWallVAO, backWallVertices, sizeof(backWallVertices));
-
-    GLuint leftWallVBO, leftWallVAO;
-    initRecVBOandVAO(leftWallVBO, leftWallVAO, leftWallVertices, sizeof(leftWallVertices));
-
-    GLuint rightWallVBO, rightWallVAO;
-    initRecVBOandVAO(rightWallVBO, rightWallVAO, rightWallVertices, sizeof(rightWallVertices));
-
-    /**************
-     * SMALL WALLS
-     **************/
+    // Mur petit
     Vertex3DColor smallWallVertices[] = {
         Vertex3DColor(glm::vec3(-5.f, -3.f, 0.f), glm::vec3(0.f, 0.f, 1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f), glm::vec2(0.f, 0.f)),
         Vertex3DColor(glm::vec3(5.f, -3.f, 0.f), glm::vec3(0.f, 0.f, 1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f), glm::vec2(1.f, 0.f)),
@@ -341,14 +440,7 @@ int main(int /*argc*/, char **argv)
         Vertex3DColor(glm::vec3(-5.f, -3.f, 0.f), glm::vec3(0.f, 0.f, 1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f), glm::vec2(0.f, 0.f)),
         Vertex3DColor(glm::vec3(5.f, 3.f, 0.f), glm::vec3(0.f, 0.f, 1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f), glm::vec2(1.f, 1.f))};
 
-    /* VBO & VAO */
-    GLuint smallWallVBO, smallWallVAO;
-    initRecVBOandVAO(smallWallVBO, smallWallVAO, smallWallVertices, sizeof(smallWallVertices));
-
-    /****************
-     * PASSAGE WALLS
-     ****************/
-
+    // Mur de passage
     Vertex3DColor leftPassageWallVertices[] = {
         Vertex3DColor(glm::vec3(-1.f, -3.f, 0.f), glm::vec3(0.f, 0.f, 1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f), glm::vec2(0.f, 0.f)),
         Vertex3DColor(glm::vec3(1.f, -3.f, 0.f), glm::vec3(0.f, 0.f, 1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f), glm::vec2(1.f, 0.f)),
@@ -365,7 +457,19 @@ int main(int /*argc*/, char **argv)
         Vertex3DColor(glm::vec3(-1.f, -3.f, 0.f), glm::vec3(0.f, 0.f, -1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f), glm::vec2(0.f, 0.f)),
         Vertex3DColor(glm::vec3(1.f, 3.f, 0.f), glm::vec3(0.f, 0.f, -1.f), glm::vec4(0.5f, 0.6f, 0.7f, 1.f), glm::vec2(1.f, 1.f))};
 
-    /* VBO & VAO */
+    // Initialisation des VBO et VAO pour chaque mur
+    GLuint backWallVBO, backWallVAO;
+    initRecVBOandVAO(backWallVBO, backWallVAO, backWallVertices, sizeof(backWallVertices));
+
+    GLuint leftWallVBO, leftWallVAO;
+    initRecVBOandVAO(leftWallVBO, leftWallVAO, leftWallVertices, sizeof(leftWallVertices));
+
+    GLuint rightWallVBO, rightWallVAO;
+    initRecVBOandVAO(rightWallVBO, rightWallVAO, rightWallVertices, sizeof(rightWallVertices));
+
+    GLuint smallWallVBO, smallWallVAO;
+    initRecVBOandVAO(smallWallVBO, smallWallVAO, smallWallVertices, sizeof(smallWallVertices));
+
     GLuint leftPassageWallVBO, leftPassageWallVAO;
     initRecVBOandVAO(leftPassageWallVBO, leftPassageWallVAO, leftPassageWallVertices, sizeof(leftPassageWallVertices));
 
@@ -435,6 +539,119 @@ int main(int /*argc*/, char **argv)
         glBindVertexArray(0);
     }
 
+    /*******
+     * CONE
+     ********/
+    Cone cone(2, 1.5f, 32, 16);
+
+    /* VBO */
+    GLuint conevbo;
+    {
+        glGenBuffers(1, &conevbo);
+        glBindBuffer(GL_ARRAY_BUFFER, conevbo);
+        glBufferData(GL_ARRAY_BUFFER, cone.getVertexCount() * sizeof(ShapeVertex), cone.getDataPointer(), GL_STATIC_DRAW);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+    }
+    /* VAO */
+    GLuint conevao;
+    {
+        glGenVertexArrays(1, &conevao);
+        glBindVertexArray(conevao);
+
+        glEnableVertexAttribArray(VERTEX_ATTR_POSITION);
+        glEnableVertexAttribArray(VERTEX_ATTR_NORMAL);
+        glEnableVertexAttribArray(VERTEX_ATTR_TEXTURE);
+
+        glBindBuffer(GL_ARRAY_BUFFER, conevbo);
+
+        glVertexAttribPointer(VERTEX_ATTR_POSITION, 3, GL_FLOAT, GL_FALSE, sizeof(ShapeVertex), (const GLvoid *)offsetof(ShapeVertex, position));
+        glVertexAttribPointer(VERTEX_ATTR_NORMAL, 3, GL_FLOAT, GL_FALSE, sizeof(ShapeVertex), (const GLvoid *)offsetof(ShapeVertex, normal));
+        glVertexAttribPointer(VERTEX_ATTR_TEXTURE, 2, GL_FLOAT, GL_FALSE, sizeof(ShapeVertex), (const GLvoid *)offsetof(ShapeVertex, texCoords));
+
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        glBindVertexArray(0);
+    }
+
+    /********
+     * TRUNK
+     ********/
+
+    Vertex3DColor trunkVertices[] = {
+        Vertex3DColor(glm::vec3(-0.2f, -1.f, -0.2f), glm::vec3(-1.f, 0.f, 0.f), glm::vec4(0.4f, 0.2f, 0.f, 1.f), glm::vec2(0.f, 0.f)),
+        Vertex3DColor(glm::vec3(0.2f, -1.f, -0.2), glm::vec3(-1.f, 0.f, 0.f), glm::vec4(0.4f, 0.2f, 0.f, 1.f), glm::vec2(0.f, 0.f)),
+        Vertex3DColor(glm::vec3(0.2f, 1.f, -0.2), glm::vec3(0.f, 0.f, -1.f), glm::vec4(0.4f, 0.2f, 0.f, 1.f), glm::vec2(0.f, 0.f)),
+        Vertex3DColor(glm::vec3(-0.2f, 1.f, -0.2), glm::vec3(0.f, 0.f, -1.f), glm::vec4(0.4f, 0.2f, 0.f, 1.f), glm::vec2(0.f, 0.f)),
+        Vertex3DColor(glm::vec3(-0.2f, -1.f, 0.2), glm::vec3(0.f, 0.f, -1.f), glm::vec4(0.4f, 0.2f, 0.f, 1.f), glm::vec2(0.f, 0.f)),
+        Vertex3DColor(glm::vec3(0.2f, -1.f, 0.2), glm::vec3(0.f, 0.f, -1.f), glm::vec4(0.4f, 0.2f, 0.f, 1.f), glm::vec2(0.f, 0.f)),
+        Vertex3DColor(glm::vec3(0.2f, 1.f, 0.2), glm::vec3(0.f, 0.f, -1.f), glm::vec4(0.4f, 0.2f, 0.f, 1.f), glm::vec2(0.f, 0.f)),
+        Vertex3DColor(glm::vec3(-0.2f, 1.f, 0.2), glm::vec3(0.f, 0.f, -1.f), glm::vec4(0.4f, 0.2f, 0.f, 1.f), glm::vec2(1.f, 1.f))};
+
+    GLuint trunkIndices[] = {
+        0, 1, 2, 2, 3, 0, // Front face
+        4, 5, 6, 6, 7, 4, // Back face
+        0, 1, 5, 5, 4, 0, // Bottom face
+        2, 3, 7, 7, 6, 2, // Top face
+        0, 3, 7, 7, 4, 0, // Left face
+        1, 2, 6, 6, 5, 1  // Right face
+    };
+
+    GLuint trunkVBO, trunkVAO, trunkEBO;
+    {
+        glGenVertexArrays(1, &trunkVAO);
+        glGenBuffers(1, &trunkVBO);
+        glGenBuffers(1, &trunkEBO);
+
+        glBindVertexArray(trunkVAO);
+
+        glBindBuffer(GL_ARRAY_BUFFER, trunkVBO);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(trunkVertices), trunkVertices, GL_STATIC_DRAW);
+
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, trunkEBO);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(trunkIndices), trunkIndices, GL_STATIC_DRAW);
+
+        glEnableVertexAttribArray(VERTEX_ATTR_POSITION);
+        glVertexAttribPointer(VERTEX_ATTR_POSITION, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex3DColor), (const GLvoid *)offsetof(Vertex3DColor, position));
+
+        glEnableVertexAttribArray(VERTEX_ATTR_COLOR);
+        glVertexAttribPointer(VERTEX_ATTR_COLOR, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex3DColor), (const GLvoid *)offsetof(Vertex3DColor, color));
+
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        glBindVertexArray(0);
+    }
+
+    /**********
+     * SPHERE
+     **********/
+    Sphere sphere(1, 32, 16);
+    /* VBO */
+    GLuint sphereVBO;
+    {
+        glGenBuffers(1, &sphereVBO);
+        glBindBuffer(GL_ARRAY_BUFFER, sphereVBO);
+        glBufferData(GL_ARRAY_BUFFER, sphere.getVertexCount() * sizeof(ShapeVertex), sphere.getDataPointer(), GL_STATIC_DRAW);
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+    }
+
+    /* VAO */
+    GLuint sphereVAO;
+    {
+        glGenVertexArrays(1, &sphereVAO);
+        glBindVertexArray(sphereVAO);
+
+        glEnableVertexAttribArray(VERTEX_ATTR_POSITION);
+        glEnableVertexAttribArray(VERTEX_ATTR_NORMAL);
+        glEnableVertexAttribArray(VERTEX_ATTR_TEXTURE);
+
+        glBindBuffer(GL_ARRAY_BUFFER, sphereVBO);
+
+        glVertexAttribPointer(VERTEX_ATTR_POSITION, 3, GL_FLOAT, GL_FALSE, sizeof(ShapeVertex), (const GLvoid *)offsetof(ShapeVertex, position));
+        glVertexAttribPointer(VERTEX_ATTR_NORMAL, 3, GL_FLOAT, GL_FALSE, sizeof(ShapeVertex), (const GLvoid *)offsetof(ShapeVertex, normal));
+        glVertexAttribPointer(VERTEX_ATTR_TEXTURE, 2, GL_FLOAT, GL_FALSE, sizeof(ShapeVertex), (const GLvoid *)offsetof(ShapeVertex, texCoords));
+
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        glBindVertexArray(0);
+    }
+
     /**********
      * SKYBOX
      **********/
@@ -491,6 +708,7 @@ int main(int /*argc*/, char **argv)
         applicationPath.dirPath() + "/assets/skybox/bottom.jpg",
         applicationPath.dirPath() + "/assets/skybox/front.jpg",
         applicationPath.dirPath() + "/assets/skybox/back.jpg"};
+
     GLuint cubemapTexture = loadCubemap(faces);
 
     // Skybox VAO and VBO
@@ -534,9 +752,9 @@ int main(int /*argc*/, char **argv)
             glDepthFunc(GL_LESS);
         }
 
-        /*****************
-         * SCENE GEOMETRY
-         *****************/
+        /*******************
+         * SHADER SELECTION
+         *******************/
 
         if (camera.getPosition().z > -17)
         {
@@ -544,8 +762,8 @@ int main(int /*argc*/, char **argv)
             room1 = true;
 
             // Set light positions in world space
-            glm::vec3 lightPos1_world = glm::vec3(8.0f, 0.f, 0.f);
-            glm::vec3 lightPos2_world = glm::vec3(0.f, 0.f, -13.f);
+            glm::vec3 lightPos1_world = glm::vec3(8.0f * cos((float)glfwGetTime()), 0.f, -5.0f + 8.0f * sin((float)glfwGetTime()));
+            glm::vec3 lightPos2_world = glm::vec3(8.f, 2.f, -12.f);
 
             // Transform light positions to view space
             glm::vec3 lightPos1_vs = glm::vec3(ViewMatrix * glm::vec4(lightPos1_world, 1.0f));
@@ -557,8 +775,10 @@ int main(int /*argc*/, char **argv)
             GLint uLightPos2_vs = glGetUniformLocation(room1Program.getGLId(), "uLightPos2_vs");
             GLint uLightIntensity2 = glGetUniformLocation(room1Program.getGLId(), "uLightIntensity2");
 
-            glm::vec3 lightIntensity1 = glm::vec3(1.0f, 1.0f, 1.0f);
-            glm::vec3 lightIntensity2 = glm::vec3(0.5f, 0.5f, 0.5f);
+            glm::vec3 lightIntensity1;
+            (light) ? lightIntensity1 = glm::vec3(1.0f, 0.5f, 0.0f) : lightIntensity1 = glm::vec3(0.0f, 0.0f, 0.0f);
+
+            glm::vec3 lightIntensity2 = glm::vec3(0.0f, 0.5f, 1.0f); // Blue
 
             glUniform3fv(uLightPos1_vs, 1, glm::value_ptr(lightPos1_vs));
             glUniform3fv(uLightIntensity1, 1, glm::value_ptr(lightIntensity1));
@@ -572,7 +792,7 @@ int main(int /*argc*/, char **argv)
 
             glm::vec3 Kd = glm::vec3(0.8f, 0.8f, 0.8f);
             glm::vec3 Ks = glm::vec3(0.5f, 0.5f, 0.5f);
-            float shininess = 32.0f;
+            float shininess = 50.0f;
 
             glUniform3fv(uKd, 1, glm::value_ptr(Kd));
             glUniform3fv(uKs, 1, glm::value_ptr(Ks));
@@ -583,6 +803,10 @@ int main(int /*argc*/, char **argv)
             room2Program.use();
             room1 = false;
         }
+
+        /*****************
+         * SCENE GEOMETRY
+         *****************/
 
         {
             /* Floor */
@@ -672,6 +896,29 @@ int main(int /*argc*/, char **argv)
         }
 
         /*****************
+         * ROOM 1 OBJECTS
+         *****************/
+        {
+            /* Tree */
+
+            drawCone(cone, treeTexture, conevao, ViewMatrix, ProjMatrix, glm::vec3(-9.f, -0.15f, 1.f), glm::vec3(0.6f, 0.6f, 0.6f), room1TextureLocation, room1MVPMatrixLocation, room1MVMatrixLocation, room1NormalMatrixLocation);
+
+            drawCone(cone, treeTexture, conevao, ViewMatrix, ProjMatrix, glm::vec3(-9.f, -1, 1.f), glm::vec3(0.8f, 0.8f, 0.8f), room1TextureLocation, room1MVPMatrixLocation, room1MVMatrixLocation, room1NormalMatrixLocation);
+
+            drawCone(cone, treeTexture, conevao, ViewMatrix, ProjMatrix, glm::vec3(-9.f, -2, 1.f), glm::vec3(1.f, 1.f, 1.f), room1TextureLocation, room1MVPMatrixLocation, room1MVMatrixLocation, room1NormalMatrixLocation);
+
+            /* Trunk */
+            MVMatrix = glm::translate(ViewMatrix, glm::vec3(-9.f, -2.f, 1.f));
+            glBindVertexArray(trunkVAO);
+            glUniformMatrix4fv(room1MVPMatrixLocation, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MVMatrix));
+            glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
+            glBindVertexArray(0);
+
+            /* Ball */
+            drawBalloon(sphere, sphereVAO, ballTexture, ViewMatrix, ProjMatrix, room1MVPMatrixLocation, room1MVMatrixLocation, room1NormalMatrixLocation, room1TextureLocation);
+        }
+
+        /*****************
          * ROOM 2 OBJECTS
          *****************/
 
@@ -710,14 +957,35 @@ int main(int /*argc*/, char **argv)
         /* Poll for and process events */
         glfwPollEvents();
     }
-    // glDeleteBuffers(1, &vbo);
-    // glDeleteVertexArrays(1, &vao);
+    glDeleteBuffers(1, &skyboxVAO);
+    glDeleteVertexArrays(1, &skyboxVBO);
 
     glDeleteBuffers(1, &floorVBO);
     glDeleteVertexArrays(1, &floorVAO);
 
+    glDeleteBuffers(1, &backWallVBO);
+    glDeleteVertexArrays(1, &backWallVAO);
+
+    glDeleteBuffers(1, &leftWallVBO);
+    glDeleteVertexArrays(1, &leftWallVAO);
+
+    glDeleteBuffers(1, &rightWallVBO);
+    glDeleteVertexArrays(1, &rightWallVAO);
+
     glDeleteBuffers(1, &smallWallVBO);
     glDeleteVertexArrays(1, &smallWallVAO);
+
+    glDeleteBuffers(1, &leftPassageWallVBO);
+    glDeleteVertexArrays(1, &leftPassageWallVAO);
+
+    glDeleteBuffers(1, &rightPassageWallVBO);
+    glDeleteVertexArrays(1, &rightPassageWallVAO);
+
+    glDeleteBuffers(1, &windowVBO);
+    glDeleteVertexArrays(1, &windowVAO);
+
+    glDeleteBuffers(1, &pedestalVBO);
+    glDeleteVertexArrays(1, &pedestalVAO);
 
     glfwTerminate();
 
