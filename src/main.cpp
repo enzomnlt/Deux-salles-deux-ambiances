@@ -36,9 +36,9 @@ bool room1 = true;
 /* Light state */
 bool light = true;
 
-/* Balloon animation */
-bool animateBalloon = true;
-float balloonTimeOffset = 0.0f;
+/* Ball animation */
+bool animateBall = true;
+float ballTimeOffset = 0.0f;
 float lastTime = 0.0f;
 
 struct Vertex3DColor
@@ -63,7 +63,7 @@ struct TransparentObject
 
 static void key_callback(GLFWwindow *window, int key, int /*scancode*/, int action, int /*mods*/)
 {
-    /* Close window if Q key is pressed */
+    // Close window if Q key is pressed
     if (action == GLFW_PRESS && key == GLFW_KEY_Q)
     {
         glfwSetWindowShouldClose(window, GLFW_TRUE);
@@ -85,6 +85,7 @@ static void key_callback(GLFWwindow *window, int key, int /*scancode*/, int acti
     {
         camera.moveLeft(-0.2);
     }
+    // Fix camera height
     camera.setCameraPositionY(cameraHeight);
 
     // Line mode
@@ -101,15 +102,15 @@ static void key_callback(GLFWwindow *window, int key, int /*scancode*/, int acti
     // Balloon animation
     if (action == GLFW_PRESS && key == GLFW_KEY_B)
     {
-        if (animateBalloon)
+        if (animateBall)
         {
             lastTime = glfwGetTime();
         }
         else
         {
-            balloonTimeOffset += glfwGetTime() - lastTime;
+            ballTimeOffset += glfwGetTime() - lastTime;
         }
-        animateBalloon = !animateBalloon;
+        animateBall = !animateBall;
     }
 }
 
@@ -221,7 +222,6 @@ void drawCone(Cone cone, GLuint texture, GLuint vao, glm::mat4 ViewMatrix, glm::
 void drawCone2(Cone cone, GLuint vao, const glm::mat4 &MVMatrix, glm::mat4 ProjMatrix, GLint MVPMatrixLocation, GLint isConeLocation)
 {
     glUniformMatrix4fv(MVPMatrixLocation, 1, GL_FALSE, glm::value_ptr(ProjMatrix * MVMatrix));
-    // color cone in white :
     glUniform1i(isConeLocation, GL_TRUE);
 
     glBindVertexArray(vao);
@@ -240,7 +240,7 @@ void drawBalloon(Sphere sphere, GLuint vao, GLuint texture, glm::mat4 ViewMatrix
     glBindVertexArray(vao);
 
     float currentTime = glfwGetTime();
-    float timeOffset = animateBalloon ? currentTime - balloonTimeOffset : lastTime - balloonTimeOffset;
+    float timeOffset = animateBall ? currentTime - ballTimeOffset : lastTime - ballTimeOffset;
 
     float angle = timeOffset * 0.5f;
     float x = 8.0f * cos(angle);
@@ -273,6 +273,7 @@ float calculateDistance(const glm::vec3 &cameraPosition, const glm::vec3 &object
 
 GLuint loadCubemap(std::vector<std::string> faces)
 {
+    // Load cubemap for skybox
     GLuint textureID;
     glGenTextures(1, &textureID);
     glBindTexture(GL_TEXTURE_CUBE_MAP, textureID);
@@ -329,11 +330,17 @@ int main(int /*argc*/, char **argv)
 
     FilePath applicationPath(argv[0]);
 
-    /* Skybox shaders */
+    /*****************
+     * Skybox Shaders
+     *****************/
+
     Program skyboxProgram = loadProgram(applicationPath.dirPath() + "../src/shaders/skybox.vs.glsl",
                                         applicationPath.dirPath() + "../src/shaders/skybox.fs.glsl");
 
-    /* Room 1 Shaders */
+    /*****************
+     * Room 1 Shaders
+     *****************/
+
     Program room1Program = loadProgram(applicationPath.dirPath() + "../src/shaders/room1.vs.glsl",
                                        applicationPath.dirPath() + "../src/shaders/room1.fs.glsl");
 
@@ -383,7 +390,10 @@ int main(int /*argc*/, char **argv)
         glBindTexture(GL_TEXTURE_2D, 0);
     }
 
-    /* Room 2 Shaders */
+    /*****************
+     * Room 2 Shaders
+     *****************/
+
     Program room2Program = loadProgram(applicationPath.dirPath() + "../src/shaders/room2.vs.glsl",
                                        applicationPath.dirPath() + "../src/shaders/room2.fs.glsl");
     room2Program.use();
@@ -564,24 +574,24 @@ int main(int /*argc*/, char **argv)
     Cone cone(2, 1.5f, 32, 16);
 
     /* VBO */
-    GLuint conevbo;
+    GLuint coneVBO;
     {
-        glGenBuffers(1, &conevbo);
-        glBindBuffer(GL_ARRAY_BUFFER, conevbo);
+        glGenBuffers(1, &coneVBO);
+        glBindBuffer(GL_ARRAY_BUFFER, coneVBO);
         glBufferData(GL_ARRAY_BUFFER, cone.getVertexCount() * sizeof(ShapeVertex), cone.getDataPointer(), GL_STATIC_DRAW);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
     }
     /* VAO */
-    GLuint conevao;
+    GLuint coneVAO;
     {
-        glGenVertexArrays(1, &conevao);
-        glBindVertexArray(conevao);
+        glGenVertexArrays(1, &coneVAO);
+        glBindVertexArray(coneVAO);
 
         glEnableVertexAttribArray(VERTEX_ATTR_POSITION);
         glEnableVertexAttribArray(VERTEX_ATTR_NORMAL);
         glEnableVertexAttribArray(VERTEX_ATTR_TEXTURE);
 
-        glBindBuffer(GL_ARRAY_BUFFER, conevbo);
+        glBindBuffer(GL_ARRAY_BUFFER, coneVBO);
 
         glVertexAttribPointer(VERTEX_ATTR_POSITION, 3, GL_FLOAT, GL_FALSE, sizeof(ShapeVertex), (const GLvoid *)offsetof(ShapeVertex, position));
         glVertexAttribPointer(VERTEX_ATTR_NORMAL, 3, GL_FLOAT, GL_FALSE, sizeof(ShapeVertex), (const GLvoid *)offsetof(ShapeVertex, normal));
@@ -676,7 +686,6 @@ int main(int /*argc*/, char **argv)
      **********/
 
     float skyboxVertices[] = {
-        // positions
         -1.0f, 1.0f, -1.0f,
         -1.0f, -1.0f, -1.0f,
         1.0f, -1.0f, -1.0f,
@@ -738,8 +747,8 @@ int main(int /*argc*/, char **argv)
         glBindVertexArray(skyboxVAO);
         glBindBuffer(GL_ARRAY_BUFFER, skyboxVBO);
         glBufferData(GL_ARRAY_BUFFER, sizeof(skyboxVertices), &skyboxVertices, GL_STATIC_DRAW);
-        glEnableVertexAttribArray(0);
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0);
+        glEnableVertexAttribArray(VERTEX_ATTR_POSITION);
+        glVertexAttribPointer(VERTEX_ATTR_POSITION, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0);
         glBindVertexArray(0);
     }
 
@@ -780,25 +789,26 @@ int main(int /*argc*/, char **argv)
             room1Program.use();
             room1 = true;
 
-            // Set light positions in world space
+            // World space
             glm::vec3 lightPos1_world = glm::vec3(8.0f * cos((float)glfwGetTime()), 0.f, -5.0f + 8.0f * sin((float)glfwGetTime()));
             glm::vec3 lightPos2_world = glm::vec3(8.f, 2.f, -12.f);
 
-            // Transform light positions to view space
+            // View
             glm::vec3 lightPos1_vs = glm::vec3(ViewMatrix * glm::vec4(lightPos1_world, 1.0f));
             glm::vec3 lightPos2_vs = glm::vec3(ViewMatrix * glm::vec4(lightPos2_world, 1.0f));
 
-            // Set light uniforms
+            // Light uniforms
             GLint uLightPos1_vs = glGetUniformLocation(room1Program.getGLId(), "uLightPos1_vs");
             GLint uLightIntensity1 = glGetUniformLocation(room1Program.getGLId(), "uLightIntensity1");
             GLint uLightPos2_vs = glGetUniformLocation(room1Program.getGLId(), "uLightPos2_vs");
             GLint uLightIntensity2 = glGetUniformLocation(room1Program.getGLId(), "uLightIntensity2");
 
+            // Light intensity
             glm::vec3 lightIntensity1;
             (light) ? lightIntensity1 = glm::vec3(1.0f, 0.5f, 0.0f) : lightIntensity1 = glm::vec3(0.0f, 0.0f, 0.0f);
+            glm::vec3 lightIntensity2 = glm::vec3(0.0f, 0.5f, 1.0f);
 
-            glm::vec3 lightIntensity2 = glm::vec3(0.0f, 0.5f, 1.0f); // Blue
-
+            // Light uniforms
             glUniform3fv(uLightPos1_vs, 1, glm::value_ptr(lightPos1_vs));
             glUniform3fv(uLightIntensity1, 1, glm::value_ptr(lightIntensity1));
             glUniform3fv(uLightPos2_vs, 1, glm::value_ptr(lightPos2_vs));
@@ -919,12 +929,9 @@ int main(int /*argc*/, char **argv)
          *****************/
         {
             /* Tree */
-
-            drawCone(cone, treeTexture, conevao, ViewMatrix, ProjMatrix, glm::vec3(-9.f, -0.15f, 1.f), glm::vec3(0.6f, 0.6f, 0.6f), room1TextureLocation, room1MVPMatrixLocation, room1MVMatrixLocation, room1NormalMatrixLocation);
-
-            drawCone(cone, treeTexture, conevao, ViewMatrix, ProjMatrix, glm::vec3(-9.f, -1, 1.f), glm::vec3(0.8f, 0.8f, 0.8f), room1TextureLocation, room1MVPMatrixLocation, room1MVMatrixLocation, room1NormalMatrixLocation);
-
-            drawCone(cone, treeTexture, conevao, ViewMatrix, ProjMatrix, glm::vec3(-9.f, -2, 1.f), glm::vec3(1.f, 1.f, 1.f), room1TextureLocation, room1MVPMatrixLocation, room1MVMatrixLocation, room1NormalMatrixLocation);
+            drawCone(cone, treeTexture, coneVAO, ViewMatrix, ProjMatrix, glm::vec3(-9.f, -0.15f, 1.f), glm::vec3(0.6f, 0.6f, 0.6f), room1TextureLocation, room1MVPMatrixLocation, room1MVMatrixLocation, room1NormalMatrixLocation);
+            drawCone(cone, treeTexture, coneVAO, ViewMatrix, ProjMatrix, glm::vec3(-9.f, -1, 1.f), glm::vec3(0.8f, 0.8f, 0.8f), room1TextureLocation, room1MVPMatrixLocation, room1MVMatrixLocation, room1NormalMatrixLocation);
+            drawCone(cone, treeTexture, coneVAO, ViewMatrix, ProjMatrix, glm::vec3(-9.f, -2, 1.f), glm::vec3(1.f, 1.f, 1.f), room1TextureLocation, room1MVPMatrixLocation, room1MVMatrixLocation, room1NormalMatrixLocation);
 
             /* Trunk */
             MVMatrix = glm::translate(ViewMatrix, glm::vec3(-9.f, -2.f, 1.f));
@@ -940,9 +947,7 @@ int main(int /*argc*/, char **argv)
         /*****************
          * ROOM 2 OBJECTS
          *****************/
-
         {
-
             /* Spikeball */
             {
                 glBindVertexArray(sphereVAO);
@@ -954,32 +959,32 @@ int main(int /*argc*/, char **argv)
 
                 MVMatrix = glm::translate(ViewMatrix, glm::vec3(7, 0, -32));
                 MVMatrix = glm::scale(MVMatrix, glm::vec3(0.2f, 0.2f, 0.2f));
-                drawCone2(cone, conevao, MVMatrix, ProjMatrix, room1MVPMatrixLocation, isConeLocation);
+                drawCone2(cone, coneVAO, MVMatrix, ProjMatrix, room1MVPMatrixLocation, isConeLocation);
 
                 MVMatrix = glm::translate(ViewMatrix, glm::vec3(7, -2, -32));
                 MVMatrix = glm::rotate(MVMatrix, glm::radians(180.f), glm::vec3(1, 0, 0));
                 MVMatrix = glm::scale(MVMatrix, glm::vec3(0.2f, 0.2f, 0.2f));
-                drawCone2(cone, conevao, MVMatrix, ProjMatrix, room1MVPMatrixLocation, isConeLocation);
+                drawCone2(cone, coneVAO, MVMatrix, ProjMatrix, room1MVPMatrixLocation, isConeLocation);
 
                 MVMatrix = glm::translate(ViewMatrix, glm::vec3(6, -1, -32));
                 MVMatrix = glm::rotate(MVMatrix, glm::radians(90.f), glm::vec3(0, 0, 1));
                 MVMatrix = glm::scale(MVMatrix, glm::vec3(0.2f, 0.2f, 0.2f));
-                drawCone2(cone, conevao, MVMatrix, ProjMatrix, room1MVPMatrixLocation, isConeLocation);
+                drawCone2(cone, coneVAO, MVMatrix, ProjMatrix, room1MVPMatrixLocation, isConeLocation);
 
                 MVMatrix = glm::translate(ViewMatrix, glm::vec3(8, -1, -32));
                 MVMatrix = glm::rotate(MVMatrix, glm::radians(90.f), glm::vec3(0, 0, -1));
                 MVMatrix = glm::scale(MVMatrix, glm::vec3(0.2f, 0.2f, 0.2f));
-                drawCone2(cone, conevao, MVMatrix, ProjMatrix, room1MVPMatrixLocation, isConeLocation);
+                drawCone2(cone, coneVAO, MVMatrix, ProjMatrix, room1MVPMatrixLocation, isConeLocation);
 
                 MVMatrix = glm::translate(ViewMatrix, glm::vec3(7, -1, -31));
                 MVMatrix = glm::rotate(MVMatrix, glm::radians(90.f), glm::vec3(1, 0, 0));
                 MVMatrix = glm::scale(MVMatrix, glm::vec3(0.2f, 0.2f, 0.2f));
-                drawCone2(cone, conevao, MVMatrix, ProjMatrix, room1MVPMatrixLocation, isConeLocation);
+                drawCone2(cone, coneVAO, MVMatrix, ProjMatrix, room1MVPMatrixLocation, isConeLocation);
 
                 MVMatrix = glm::translate(ViewMatrix, glm::vec3(7, -1, -33));
                 MVMatrix = glm::rotate(MVMatrix, glm::radians(90.f), glm::vec3(-1, 0, 0));
                 MVMatrix = glm::scale(MVMatrix, glm::vec3(0.2f, 0.2f, 0.2f));
-                drawCone2(cone, conevao, MVMatrix, ProjMatrix, room1MVPMatrixLocation, isConeLocation);
+                drawCone2(cone, coneVAO, MVMatrix, ProjMatrix, room1MVPMatrixLocation, isConeLocation);
             }
 
             /* Pedestal */
@@ -992,29 +997,31 @@ int main(int /*argc*/, char **argv)
 
                 MVMatrix = glm::translate(ViewMatrix, glm::vec3(-6.f, -0.5f, -24.75));
                 MVMatrix = glm::scale(MVMatrix, glm::vec3(0.2f, 0.2f, 0.2f));
-                drawCone2(cone, conevao, MVMatrix, ProjMatrix, room1MVPMatrixLocation, isConeLocation);
+                drawCone2(cone, coneVAO, MVMatrix, ProjMatrix, room1MVPMatrixLocation, isConeLocation);
             }
 
             /* Windows */
-            std::vector<TransparentObject> transparentObjects = {
-                {windowVAO, glm::vec3(-6, 0, -24), glm::translate(ViewMatrix, glm::vec3(-6, 0, -24))},
-                {windowVAO, glm::vec3(-6, 0, -25.5), glm::translate(ViewMatrix, glm::vec3(-6, 0, -25.5))},
-                {windowVAO, glm::vec3(-6.75f, 0, -24.75f), glm::rotate(glm::translate(ViewMatrix, glm::vec3(-6.75f, 0, -24.75f)), glm::radians(90.f), glm::vec3(0, 1, 0))},
-                {windowVAO, glm::vec3(-5.25f, 0, -24.75f), glm::rotate(glm::translate(ViewMatrix, glm::vec3(-5.25f, 0, -24.75f)), glm::radians(90.f), glm::vec3(0, 1, 0))}};
-
-            glm::vec3 cameraPosition = camera.getPosition();
-
-            std::sort(transparentObjects.begin(), transparentObjects.end(), [&cameraPosition](const TransparentObject &a, const TransparentObject &b)
-                      { return calculateDistance(cameraPosition, a.position) > calculateDistance(cameraPosition, b.position); });
-
-            glEnable(GL_BLEND);
-            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-            for (const auto &obj : transparentObjects)
             {
-                drawRec2(obj.vao, obj.modelMatrix, ProjMatrix, room2MVPMatrixLocation);
+                std::vector<TransparentObject> transparentObjects = {
+                    {windowVAO, glm::vec3(-6, 0, -24), glm::translate(ViewMatrix, glm::vec3(-6, 0, -24))},
+                    {windowVAO, glm::vec3(-6, 0, -25.5), glm::translate(ViewMatrix, glm::vec3(-6, 0, -25.5))},
+                    {windowVAO, glm::vec3(-6.75f, 0, -24.75f), glm::rotate(glm::translate(ViewMatrix, glm::vec3(-6.75f, 0, -24.75f)), glm::radians(90.f), glm::vec3(0, 1, 0))},
+                    {windowVAO, glm::vec3(-5.25f, 0, -24.75f), glm::rotate(glm::translate(ViewMatrix, glm::vec3(-5.25f, 0, -24.75f)), glm::radians(90.f), glm::vec3(0, 1, 0))}};
+
+                glm::vec3 cameraPosition = camera.getPosition();
+
+                std::sort(transparentObjects.begin(), transparentObjects.end(), [&cameraPosition](const TransparentObject &a, const TransparentObject &b)
+                          { return calculateDistance(cameraPosition, a.position) > calculateDistance(cameraPosition, b.position); });
+
+                glEnable(GL_BLEND);
+                glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+                for (const auto &obj : transparentObjects)
+                {
+                    drawRec2(obj.vao, obj.modelMatrix, ProjMatrix, room2MVPMatrixLocation);
+                }
+                glDisable(GL_BLEND);
             }
-            glDisable(GL_BLEND);
         }
 
         /* Swap front and back buffers */
@@ -1051,6 +1058,22 @@ int main(int /*argc*/, char **argv)
 
     glDeleteBuffers(1, &pedestalVBO);
     glDeleteVertexArrays(1, &pedestalVAO);
+
+    glDeleteBuffers(1, &coneVBO);
+    glDeleteVertexArrays(1, &coneVAO);
+
+    glDeleteBuffers(1, &trunkVBO);
+    glDeleteVertexArrays(1, &trunkVAO);
+
+    glDeleteBuffers(1, &sphereVBO);
+    glDeleteVertexArrays(1, &sphereVAO);
+
+    glDeleteTextures(1, &woodTexture);
+    glDeleteTextures(1, &ballTexture);
+
+    glDeleteProgram(room1Program.getGLId());
+    glDeleteProgram(room2Program.getGLId());
+    glDeleteProgram(skyboxProgram.getGLId());
 
     glfwTerminate();
 
